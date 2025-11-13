@@ -15,7 +15,7 @@ function decimalToNumber<T>(data: T): T {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { rmaNumber: string } }
+  { params }: { params: Promise<{ rmaNumber: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -23,7 +23,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { rmaNumber } = params;
+    const { rmaNumber } = await params;
 
     console.log("📦 Fetching return detail:", rmaNumber);
 

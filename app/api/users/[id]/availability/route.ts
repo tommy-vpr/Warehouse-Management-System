@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const body = await req.json();
   const {
@@ -19,10 +19,11 @@ export async function POST(
   } = body;
 
   try {
+    const { id } = await params;
     // Check if user has active work
     const incompleteLists = await prisma.pickList.findMany({
       where: {
-        assignedTo: params.id,
+        assignedTo: id,
         status: {
           in: ["ASSIGNED", "IN_PROGRESS", "PAUSED"],
         },
@@ -55,7 +56,7 @@ export async function POST(
       const availableStaff = await prisma.user.findMany({
         where: {
           role: "STAFF",
-          id: { not: params.id },
+          id: { not: id },
         },
         include: {
           assignedPickLists: {

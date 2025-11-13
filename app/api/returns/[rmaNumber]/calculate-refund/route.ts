@@ -7,12 +7,13 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { rmaNumber: string } }
+  { params }: { params: Promise<{ rmaNumber: string }> }
 ) {
   try {
+    const { rmaNumber } = await params;
     // Get return order ID from RMA number
     const returnOrder = await prisma.returnOrder.findUnique({
-      where: { rmaNumber: params.rmaNumber },
+      where: { rmaNumber },
       select: { id: true },
     });
 

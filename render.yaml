@@ -1,0 +1,20 @@
+services:
+  - type: worker
+    name: warehouse-shipment-worker
+    env: node
+    buildCommand: npm ci
+    startCommand: npx tsx workers/shipment-worker.ts
+    envVars:
+      - key: REDIS_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: ABLY_API_KEY
+        sync: false
+      - key: WORKER_CONCURRENCY
+        value: 3
+      - key: NODE_ENV
+        value: production
+    plan: free
+    region: oregon
+    autoDeploy: true

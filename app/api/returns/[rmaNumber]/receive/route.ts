@@ -8,9 +8,10 @@ import { authOptions } from "@/lib/auth";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { rmaNumber: string } }
+  { params }: { params: Promise<{ rmaNumber: string }> }
 ) {
   try {
+    const { rmaNumber } = await params;
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
@@ -21,7 +22,7 @@ export async function POST(
     const { trackingNumber } = body;
 
     const result = await returnService.receiveReturn(
-      params.rmaNumber,
+      rmaNumber,
       session.user.id,
       trackingNumber
     );
