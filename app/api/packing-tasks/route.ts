@@ -1,25 +1,47 @@
 // app/api/packing-tasks/route.ts
-import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { notifyUser } from "@/lib/ably-server";
+import { handleApiError } from "@/lib/error-handler";
 import { WorkTaskStatus } from "@prisma/client";
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
     const { orderIds, assignedTo, priority } = body;
 
-    // ... validation ...
+    // Validation
+    if (!orderIds || orderIds.length === 0) {
+      return NextResponse.json(
+        { error: "No orders selected" },
+        { status: 400 }
+      );
+    }
 
-    // Get orders with their items and product info
+    if (!assignedTo) {
+      return NextResponse.json(
+        { error: "Staff member not selected" },
+        { status: 400 }
+      );
+    }
+
+    // Get orders with their items
     const orders = await prisma.order.findMany({
       where: {
         id: { in: orderIds },
-        status: "PICKED",
+        status: "PICKED", // ✅ Only PICKED orders
       },
       include: {
         items: {
           include: {
-            productVariant: true, // ← Need product info
+            productVariant: true,
           },
         },
       },
@@ -34,31 +56,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ CORRECT - Create one task item per product per order
+    // Create task items (one per product per order)
     const taskItems: any[] = [];
     let sequence = 1;
+    let totalQuantity = 0;
 
     for (const order of orders) {
       for (const orderItem of order.items) {
         taskItems.push({
           orderId: order.id,
-          productVariantId: orderItem.productVariantId, // ✅ Add this
+          productVariantId: orderItem.productVariantId,
           quantityRequired: orderItem.quantity,
           quantityCompleted: 0,
           status: "PENDING",
           sequence: sequence++,
         });
+
+        totalQuantity += orderItem.quantity;
       }
     }
 
     console.log(
-      `Creating ${taskItems.length} task items for ${orders.length} orders`
+      `Creating ${taskItems.length} task items (${totalQuantity} total units) for ${orders.length} orders`
     );
 
     // Generate task number
     const taskNumber = `PACK-${Date.now().toString().slice(-6)}`;
 
-    // ✅ Use transaction to ensure atomicity
+    // Create packing task in transaction
     const packingTask = await prisma.$transaction(async (tx) => {
       // Create task
       const task = await tx.workTask.create({
@@ -71,7 +96,9 @@ export async function POST(req: NextRequest) {
           priority: priority || 0,
           orderIds: orders.map((o) => o.id),
           totalOrders: orders.length,
-          totalItems: taskItems.length, // ✅ Use actual item count
+          totalItems: taskItems.length, // ✅ Total quantity
+          completedOrders: 0,
+          completedItems: 0,
         },
       });
 
@@ -83,7 +110,7 @@ export async function POST(req: NextRequest) {
         })),
       });
 
-      // ✅ VALIDATE items were created
+      // Validate items were created
       const createdItemCount = await tx.taskItem.count({
         where: { taskId: task.id },
       });
@@ -94,8 +121,18 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // Create task event
+      await tx.taskEvent.create({
+        data: {
+          taskId: task.id,
+          eventType: "TASK_CREATED",
+          userId: session.user.id,
+          notes: `Packing task created with ${totalQuantity} items from ${orders.length} order(s)`,
+        },
+      });
+
       console.log(
-        `✅ Created task ${taskNumber} with ${createdItemCount} items`
+        `✅ Created task ${taskNumber} with ${createdItemCount} items (${totalQuantity} units)`
       );
 
       // Return task with items
@@ -129,115 +166,151 @@ export async function POST(req: NextRequest) {
     await prisma.order.updateMany({
       where: { id: { in: orderIds } },
       data: {
-        status: "PACKED", // ← Should this be "PACKING" instead?
+        status: "PACKING",
         currentStage: "PACKING",
         packingAssignedTo: assignedTo,
         packingAssignedAt: new Date(),
       },
     });
 
-    // Send notification...
-    // ... rest of your code
+    // Send notification to assigned user
+    try {
+      const assignedUser = packingTask?.assignedUser;
+      const assignedByName =
+        session.user.name || session.user.email || "Manager";
+
+      if (packingTask) {
+        await notifyUser(assignedTo, {
+          type: "PACKING_TASK_ASSIGNED",
+          title: "New Packing Task Assigned",
+          message: `You've been assigned packing task ${packingTask.taskNumber} with ${packingTask.totalOrders} order(s) and ${totalQuantity} items by ${assignedByName}.`,
+          link: `/dashboard/packing/progress/${packingTask.id}`,
+          metadata: {
+            taskId: packingTask.id,
+            taskNumber: packingTask.taskNumber,
+            totalItems: totalQuantity,
+            totalOrders: packingTask.totalOrders,
+            assignedBy: assignedByName,
+            assignedAt: new Date().toISOString(),
+            priority: priority || 0,
+            orders: packingTask.taskItems
+              .map((item) => ({
+                orderId: item.order.id,
+                orderNumber: item.order.orderNumber,
+                customerName: item.order.customerName,
+              }))
+              .filter(
+                (order, index, self) =>
+                  index === self.findIndex((o) => o.orderId === order.orderId)
+              ),
+          },
+        });
+
+        console.log(
+          `✅ Packing task notification sent to ${
+            assignedUser?.name || assignedUser?.email
+          }`
+        );
+      }
+    } catch (notificationError) {
+      console.error(
+        "❌ Failed to send packing task notification:",
+        notificationError
+      );
+    }
 
     return NextResponse.json(packingTask, { status: 201 });
   } catch (error) {
     console.error("❌ Error creating packing task:", error);
     return NextResponse.json(
-      { error: "Failed to create packing task", details: error.message },
+      {
+        error: "Failed to create packing task",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 }
     );
   }
 }
 
-// // app/api/packing-tasks/route.ts
-// import { prisma } from "@/lib/prisma";
-// import { NextRequest, NextResponse } from "next/server";
-// import { WorkTaskStatus } from "@prisma/client";
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const status = searchParams.get("status");
+  const assignedTo = searchParams.get("assignedTo");
+  const page = parseInt(searchParams.get("page") || "1");
+  const limit = parseInt(searchParams.get("limit") || "20");
 
-// /**
-//  * GET /api/packing-tasks
-//  * Get all packing tasks with optional filters
-//  */
-// export async function GET(req: NextRequest) {
-//   const { searchParams } = new URL(req.url);
-//   const status = searchParams.get("status");
-//   const assignedTo = searchParams.get("assignedTo");
-//   const page = parseInt(searchParams.get("page") || "1");
-//   const limit = parseInt(searchParams.get("limit") || "20");
+  console.log("📋 GET /api/packing-tasks", { status, assignedTo, page, limit });
 
-//   console.log("📋 GET /api/packing-tasks", { status, assignedTo, page, limit });
+  try {
+    const skip = (page - 1) * limit;
 
-//   try {
-//     const skip = (page - 1) * limit;
+    const where = {
+      type: "PACKING" as const,
+      ...(status && {
+        status: {
+          in: status.split(",").map((s) => s.trim() as WorkTaskStatus),
+        },
+      }),
+      ...(assignedTo && { assignedTo }),
+    };
 
-//     const where = {
-//       type: "PACKING" as const,
-//       ...(status && {
-//         status: {
-//           in: status.split(",").map((s) => s.trim() as WorkTaskStatus),
-//         },
-//       }),
-//       ...(assignedTo && { assignedTo }),
-//     };
+    // Get total count for pagination
+    const totalCount = await prisma.workTask.count({ where });
+    const totalPages = Math.ceil(totalCount / limit);
 
-//     // Get total count for pagination
-//     const totalCount = await prisma.workTask.count({ where });
-//     const totalPages = Math.ceil(totalCount / limit);
+    const tasks = await prisma.workTask.findMany({
+      where,
+      include: {
+        assignedUser: {
+          select: { id: true, name: true, email: true },
+        },
+        taskItems: {
+          include: {
+            order: {
+              select: {
+                id: true,
+                orderNumber: true,
+                customerName: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+    });
 
-//     const tasks = await prisma.workTask.findMany({
-//       where,
-//       include: {
-//         assignedUser: {
-//           select: { id: true, name: true, email: true },
-//         },
-//         taskItems: {
-//           include: {
-//             order: {
-//               select: {
-//                 id: true,
-//                 orderNumber: true,
-//                 customerName: true,
-//               },
-//             },
-//           },
-//         },
-//       },
-//       orderBy: { createdAt: "desc" },
-//       skip,
-//       take: limit,
-//     });
+    console.log(
+      `✅ Found ${tasks.length} packing tasks (page ${page}/${totalPages})`
+    );
 
-//     console.log(
-//       `✅ Found ${tasks.length} packing tasks (page ${page}/${totalPages})`
-//     );
+    const tasksWithProgress = tasks.map((task) => ({
+      ...task,
+      completionRate:
+        task.totalOrders > 0
+          ? Math.round((task.completedOrders / task.totalOrders) * 100)
+          : 0,
+    }));
 
-//     const tasksWithProgress = tasks.map((task) => ({
-//       ...task,
-//       completionRate:
-//         task.totalOrders > 0
-//           ? Math.round((task.completedOrders / task.totalOrders) * 100)
-//           : 0,
-//     }));
+    return NextResponse.json({
+      tasks: tasksWithProgress,
+      totalPages,
+      currentPage: page,
+      totalCount,
+    });
+  } catch (error) {
+    console.error("Error fetching packing tasks:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to fetch packing tasks",
+        details: handleApiError(error),
+      },
+      { status: 500 }
+    );
+  }
+}
 
-//     return NextResponse.json({
-//       tasks: tasksWithProgress,
-//       totalPages,
-//       currentPage: page,
-//       totalCount,
-//     });
-//   } catch (error) {
-//     console.error("Error fetching packing tasks:", error);
-//     return NextResponse.json(
-//       { error: "Failed to fetch packing tasks", details: error.message },
-//       { status: 500 }
-//     );
-//   }
-// }
-
-// /**
-//  * POST /api/packing-tasks
-//  * Create packing task from PICKED orders
-//  */
 // export async function POST(req: NextRequest) {
 //   try {
 //     const body = await req.json();

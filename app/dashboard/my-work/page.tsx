@@ -44,10 +44,11 @@ interface WorkTask {
   totalOrders: number;
   completedOrders: number;
   orderNumbers: string[];
+  orderIds: string[];
   progress: number;
   priority: number;
   notes: string | null;
-  source: "WORK_TASK" | "PICK_LIST";
+  source: "WORK_TASK" | "PICK_LIST" | "PACK_LIST";
 }
 
 interface MyWorkResponse {
@@ -119,12 +120,23 @@ export default function MyWorkPage() {
       return `/dashboard/picking/progress/${task.id}`;
     }
 
+    // If it's a PackList, go to packing progress page
+    if (task.source === "PACK_LIST") {
+      return `/dashboard/packing/progress/${task.id}`;
+    }
+
     // Otherwise, route based on task type
     switch (task.type) {
       case "PICKING":
         return `/dashboard/picking/${task.id}`;
       case "PACKING":
-        return `/dashboard/packing/${task.id}`;
+        // ✅ Go directly to the first order's packing UI
+        const firstOrderId = task.orderIds?.[0];
+        if (firstOrderId) {
+          return `/dashboard/packing/pack/${firstOrderId}`;
+        }
+        // Fallback to progress view if no orders
+        return `/dashboard/packing/progress/${task.id}`;
       case "SHIPPING":
         return `/dashboard/shipping/${task.id}`;
       case "QC":
@@ -350,7 +362,7 @@ export default function MyWorkPage() {
                                 {task.progress}%
                               </span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="w-full bg-gray-200 dark:bg-zinc-700 rounded-full h-2">
                               <div
                                 className={`h-2 rounded-full transition-all ${getProgressColor(
                                   task.progress
@@ -425,7 +437,7 @@ export default function MyWorkPage() {
                               {task.progress}%
                             </span>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div className="w-full bg-gray-200 dark:bg-zinc-700 rounded-full h-2">
                             <div
                               className={`h-2 rounded-full transition-all ${getProgressColor(
                                 task.progress

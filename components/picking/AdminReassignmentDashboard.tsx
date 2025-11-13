@@ -438,7 +438,7 @@ function StaffWorkloadRow({ staff, onSelectStaff }: StaffWorkloadRowProps) {
   );
 }
 
-// NEW: Mobile Card View Component
+// Mobile Card View Component
 interface StaffWorkloadCardProps {
   staff: StaffMemberWithWorkload;
   onSelectStaff: () => void;
@@ -569,7 +569,6 @@ function BulkReassignmentModal({
   const [selectedLists, setSelectedLists] = useState<string[]>([]);
   const [reason, setReason] = useState<ReassignmentReason>("WORKLOAD_BALANCE");
   const [notes, setNotes] = useState<string>("");
-  const [strategy, setStrategy] = useState<"split" | "simple">("split");
   const [loading, setLoading] = useState<boolean>(false);
 
   const toggleList = (listId: string) => {
@@ -593,9 +592,9 @@ function BulkReassignmentModal({
       const payload: ReassignmentRequest = {
         pickListIds: selectedLists,
         toUserId: targetStaffId,
+        strategy: "simple",
         reason,
         notes: notes.trim() || undefined,
-        strategy,
       };
 
       const response = await fetch("/api/pick-lists/reassign", {
@@ -693,51 +692,6 @@ function BulkReassignmentModal({
                 </option>
               ))}
             </select>
-          </div>
-
-          {/* Strategy Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Reassignment Strategy
-            </label>
-            <div className="space-y-3">
-              <label className="flex items-start gap-3 p-3 border border-gray-300 dark:border-zinc-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-700">
-                <input
-                  type="radio"
-                  name="strategy"
-                  value="split"
-                  checked={strategy === "split"}
-                  onChange={(e) => setStrategy(e.target.value as "split")}
-                  className="w-4 h-4 mt-0.5"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
-                    Smart Split & Reassign
-                  </div>
-                  <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                    Create new pick lists for unpicked items
-                  </div>
-                </div>
-              </label>
-              <label className="flex items-start gap-3 p-3 border border-gray-300 dark:border-zinc-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-700">
-                <input
-                  type="radio"
-                  name="strategy"
-                  value="simple"
-                  checked={strategy === "simple"}
-                  onChange={(e) => setStrategy(e.target.value as "simple")}
-                  className="w-4 h-4 mt-0.5"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
-                    Simple Reassignment
-                  </div>
-                  <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                    Keep existing lists, just change assignee
-                  </div>
-                </div>
-              </label>
-            </div>
           </div>
 
           {/* Notes */}

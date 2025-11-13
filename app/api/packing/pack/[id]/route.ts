@@ -294,7 +294,13 @@ export async function GET(
     }
 
     // ✅ Allow packing if items are picked OR packed OR shipped (for partial shipments)
-    const allowedStatuses = ["PICKED", "PACKED", "SHIPPED", "BACKORDER"];
+    const allowedStatuses = [
+      "PICKED",
+      "PACKED",
+      "SHIPPED",
+      "BACKORDER",
+      "PACKING",
+    ];
     if (!allowedStatuses.includes(order.status)) {
       return NextResponse.json(
         {
@@ -354,6 +360,7 @@ export async function GET(
         })),
         items: itemsToPackFiltered.map((item) => ({
           id: item.id,
+          productVariantId: item.productVariantId,
           productName: item.productVariant.product.name,
           sku: item.productVariant.sku,
           quantity: item.quantityToPack, // ✅ What we're packing NOW (actual picked)

@@ -23,6 +23,7 @@ import {
 import { useParams } from "next/navigation";
 import ShippingLabelForm from "@/components/shipping/ShippingLabelForm";
 import OrderImageUploader from "@/components/order/OrderImageUploader";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface OrderItem {
   id: string;
@@ -35,6 +36,7 @@ interface OrderItem {
   totalPrice: string;
   weightGrams: number;
   weightOz: number;
+  productVariantId: string;
 }
 
 interface PackingInfo {
@@ -106,10 +108,15 @@ export default function EnhancedPackingInterface() {
   const id = params.id;
   const [packages, setPackages] = useState<any[]>([]);
 
+  const queryClient = useQueryClient();
+
   // Order state
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [packingInfo, setPackingInfo] = useState<PackingInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // ✅ ADD THIS: Packing task state
+  const [packingTask, setPackingTask] = useState<any>(null);
 
   // Packing state
   const [selectedBox, setSelectedBox] = useState("");
@@ -136,7 +143,7 @@ export default function EnhancedPackingInterface() {
 
   const isPackingComplete = order?.status === "SHIPPED";
 
-  console.log("Order: ", order);
+  const [verifyingItemId, setVerifyingItemId] = useState<string | null>(null);
 
   useEffect(() => {
     loadOrderDetails();
@@ -160,6 +167,22 @@ export default function EnhancedPackingInterface() {
         // Pre-select suggested box
         if (data.packingInfo.suggestedBox) {
           setSelectedBox(data.packingInfo.suggestedBox);
+        }
+
+        // ✅ ADD THIS: Try to find associated packing task
+        try {
+          const taskResponse = await fetch(`/api/packing-tasks/by-order/${id}`);
+
+          if (taskResponse.ok) {
+            const taskData = await taskResponse.json();
+            setPackingTask(taskData.task);
+            console.log("✅ Found packing task:", taskData.task.taskNumber);
+          }
+        } catch (err) {
+          console.log(
+            "No packing task found (that's ok, will work without it)"
+          );
+          // It's fine if there's no task - packing still works locally
         }
       } else {
         // ✅ Handle specific error cases with detailed information
@@ -195,15 +218,113 @@ export default function EnhancedPackingInterface() {
   const calculatedWeightLbs = packingInfo?.totalWeightLbs || 0;
   const calculatedWeightOz = packingInfo?.totalWeightOz || 0;
 
-  // Toggle item verification
-  const toggleItemVerification = (itemId: string) => {
-    const newVerified = new Set(verifiedItems);
-    if (newVerified.has(itemId)) {
+  const toggleItemVerification = async (itemId: string) => {
+    // ✅ Prevent multiple clicks
+    if (verifyingItemId) return;
+
+    // Unverify - just local
+    if (verifiedItems.has(itemId)) {
+      const newVerified = new Set(verifiedItems);
       newVerified.delete(itemId);
-    } else {
-      newVerified.add(itemId);
+      setVerifiedItems(newVerified);
+      return;
     }
-    setVerifiedItems(newVerified);
+
+    // ✅ Set loading state
+    setVerifyingItemId(itemId);
+
+    if (packingTask && order) {
+      try {
+        const orderItem = order.items.find((i) => i.id === itemId);
+
+        if (!orderItem) {
+          console.error("Order item not found");
+          setVerifyingItemId(null); // ✅ Clear loading
+          return;
+        }
+
+        const taskItem = packingTask.taskItems?.find((ti: any) => {
+          return (
+            ti.orderId === order.id &&
+            ti.productVariantId === orderItem.productVariantId
+          );
+        });
+
+        if (!taskItem) {
+          console.error("❌ Could not find matching task item");
+          alert(
+            "Could not find matching task item. Check console for details."
+          );
+          setVerifyingItemId(null); // ✅ Clear loading
+          return;
+        }
+
+        const response = await fetch(
+          `/api/work-tasks/${packingTask.id}/complete-item`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              taskItemId: taskItem.id,
+              quantityCompleted: orderItem.quantity || 1,
+            }),
+          }
+        );
+
+        if (response.ok) {
+          const result = await response.json();
+
+          // Update local state
+          const newVerified = new Set(verifiedItems);
+          newVerified.add(itemId);
+          setVerifiedItems(newVerified);
+
+          // Invalidate all related caches
+          queryClient.invalidateQueries({
+            queryKey: ["packingTasks"],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["my-work"],
+          });
+
+          // Update local task state
+          if (packingTask) {
+            setPackingTask({
+              ...packingTask,
+              totalItems: result.progress.totalItems,
+              completedItems: result.progress.completedItems,
+            });
+          }
+
+          if (result.taskComplete) {
+            alert("All items packed! Task automatically completed. 🎉");
+
+            queryClient.invalidateQueries({
+              queryKey: ["packingTasks"],
+            });
+            queryClient.invalidateQueries({
+              queryKey: ["my-work"],
+            });
+
+            setCurrentStep(2);
+          }
+        } else {
+          const error = await response.json();
+          alert(`Failed: ${error.error || "Unknown error"}`);
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        alert("Failed to mark item as packed");
+      } finally {
+        setVerifyingItemId(null); // ✅ Clear loading
+      }
+    } else {
+      // No task - just local verification
+      const newVerified = new Set(verifiedItems);
+      newVerified.add(itemId);
+      setVerifiedItems(newVerified);
+      setVerifyingItemId(null); // ✅ Clear loading
+    }
   };
 
   // Check if can proceed to next step
@@ -843,11 +964,12 @@ export default function EnhancedPackingInterface() {
                         <AlertTriangle /> Back Ordered:
                       </span>
                       <span>
-                        {totalItemsBackOrdered} items ($
+                        {totalItemsBackOrdered} items
+                        {/* ($
                         {(
                           parseFloat(order.totalAmount) - totalPackingValue
                         ).toFixed(2)}
-                        )
+                        ) */}
                       </span>
                     </div>
                   )}

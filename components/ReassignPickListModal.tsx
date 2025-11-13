@@ -61,7 +61,7 @@ export function ReassignPickListModal({
         body: JSON.stringify({
           pickListIds: selectedPickLists.map((pl) => pl.id),
           toUserId: selectedStaff,
-          strategy,
+          strategy: "simple",
           reason,
           notes,
         }),
@@ -224,7 +224,7 @@ export function ReassignPickListModal({
           )}
 
           {/* Strategy Selection */}
-          <div>
+          {/* <div>
             <Label htmlFor="strategy">Reassignment Strategy</Label>
             <select
               id="strategy"
@@ -244,7 +244,7 @@ export function ReassignPickListModal({
                 ? "Recommended: Handles partial progress automatically"
                 : "Only use for lists that haven't been started"}
             </p>
-          </div>
+          </div> */}
 
           {/* Reason */}
           <div>

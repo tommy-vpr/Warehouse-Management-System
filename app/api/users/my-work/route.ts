@@ -74,13 +74,14 @@ export async function GET(request: NextRequest) {
       orderNumbers: Array.from(
         new Set(task.taskItems.map((i) => i.order?.orderNumber).filter(Boolean))
       ),
+      orderIds: task.orderIds,
       progress:
         task.totalOrders > 0
           ? Math.round((task.completedOrders / task.totalOrders) * 100)
           : 0,
       priority: task.priority,
       notes: task.notes,
-      source: "WORK_TASK" as const,
+      source: task.type === "PACKING" ? "PACK_LIST" : "WORK_TASK",
     }));
 
     // Transform PickLists

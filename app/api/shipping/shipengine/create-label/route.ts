@@ -952,6 +952,47 @@ export async function POST(request: NextRequest) {
     });
     // ===== DB TRANSACTION END =====
 
+    try {
+      console.log(
+        `📦 Updating TaskItems for shipping task ${shippingTask.id}...`
+      );
+
+      // ✅ Get tracking numbers from labelPackages
+      const trackingNumbers = labelPackages
+        .map((p: any) => p.tracking_number)
+        .filter(Boolean)
+        .join(", ");
+
+      // Get all TaskItems for this shipping task
+      const taskItems = await prisma.taskItem.findMany({
+        where: {
+          taskId: shippingTask.id,
+          orderId: order.id,
+        },
+      });
+
+      console.log(`Found ${taskItems.length} task items to complete`);
+
+      // Mark each TaskItem as completed
+      for (const taskItem of taskItems) {
+        await prisma.taskItem.update({
+          where: { id: taskItem.id },
+          data: {
+            status: "COMPLETED",
+            quantityCompleted: taskItem.quantityRequired, // ✅ Set the quantity
+            completedBy: userId,
+            completedAt: new Date(),
+            notes: `Shipped via ${carrierCode.toUpperCase()} - Tracking: ${trackingNumbers}`,
+          },
+        });
+      }
+
+      console.log(`✅ Updated ${taskItems.length} task items to COMPLETED`);
+    } catch (taskItemError) {
+      console.error("⚠️ Failed to update task items:", taskItemError);
+      // Don't fail the entire request if this fails
+    }
+
     // ===================================================================
     // ✅ NEW: Log label generation events AFTER transaction succeeds
     // ===================================================================

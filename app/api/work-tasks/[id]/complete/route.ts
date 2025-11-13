@@ -4,77 +4,51 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// export async function PATCH(
-//   req: NextRequest,
-//   { params }: { params: Promise<{ id: string }> } // ✅ Add Promise
-// ) {
-//   try {
-//     const session = await getServerSession(authOptions);
-//     if (!session?.user) {
-//       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-//     }
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> } // ✅ Add Promise
+) {
+  try {
+    const { id: taskId } = await params;
 
-//     const { taskItemId, quantityCompleted, notes } = await req.json();
-//     const { id: taskId } = await params;
-//     console.log("🔵 PATCH hit with ID:", taskId);
+    const task = await prisma.workTask.findUnique({
+      where: { id: taskId },
+      include: {
+        taskItems: true,
+        assignedUser: true,
+      },
+    });
 
-//     return NextResponse.json({
-//       message: "WORKED",
-//     });
-//   } catch (error) {
-//     console.error("Error completing task item:", error);
-//     return NextResponse.json(
-//       { error: "Failed to complete task item" },
-//       { status: 500 }
-//     );
-//   }
-// }
+    if (!task) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
 
-// export async function GET(
-//   req: NextRequest,
-//   { params }: { params: Promise<{ id: string }> } // ✅ Add Promise
-// ) {
-//   try {
-//     const { id: taskId } = await params;
+    return NextResponse.json(task);
+  } catch (err) {
+    console.error("Error loading task:", err);
+    return NextResponse.json({ error: "Failed to load task" }, { status: 500 });
+  }
+}
 
-//     const task = await prisma.workTask.findUnique({
-//       where: { id: taskId },
-//       include: {
-//         taskItems: true,
-//         assignedUser: true,
-//       },
-//     });
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const body = await req.json();
 
-//     if (!task) {
-//       return NextResponse.json({ error: "Task not found" }, { status: 404 });
-//     }
-
-//     return NextResponse.json(task);
-//   } catch (err) {
-//     console.error("Error loading task:", err);
-//     return NextResponse.json({ error: "Failed to load task" }, { status: 500 });
-//   }
-// }
-
-// export async function POST(
-//   req: NextRequest,
-//   { params }: { params: Promise<{ id: string }> }
-// ) {
-//   const { id } = await params;
-//   const body = await req.json();
-
-//   return NextResponse.json({
-//     success: true,
-//     message: "POST route works!",
-//     taskId: id,
-//     receivedData: body,
-//     timestamp: new Date().toISOString(),
-//   });
-// }
+  return NextResponse.json({
+    success: true,
+    message: "POST route works!",
+    taskId: id,
+    receivedData: body,
+    timestamp: new Date().toISOString(),
+  });
+}
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> } // ✅ Add Promise
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -84,6 +58,7 @@ export async function PATCH(
 
     const { taskItemId, quantityCompleted, notes } = await req.json();
     const { id: taskId } = await params;
+    console.log("🔵 PATCH hit with ID:", taskId);
 
     // Get the task item
     const taskItem = await prisma.taskItem.findUnique({
@@ -96,8 +71,6 @@ export async function PATCH(
         },
       },
     });
-
-    console.log("Task item", taskItem);
 
     if (!taskItem) {
       return NextResponse.json(
@@ -118,7 +91,7 @@ export async function PATCH(
       },
     });
 
-    // Increment completedItems
+    // ✅ INCREMENT completedItems
     await prisma.workTask.update({
       where: { id: taskId },
       data: {
@@ -126,16 +99,16 @@ export async function PATCH(
       },
     });
 
-    // Check if all items for this ORDER are complete
+    // ✅ CHECK if all items for this ORDER are complete
     const orderItems = taskItem.task.taskItems.filter(
-      (item: any) => item.orderId === taskItem.orderId
+      (item) => item.orderId === taskItem.orderId
     );
 
     const allOrderItemsComplete = orderItems.every(
-      (item: any) => item.id === taskItemId || item.status === "COMPLETED"
+      (item) => item.id === taskItemId || item.status === "COMPLETED"
     );
 
-    // If order complete, increment completedOrders
+    // ✅ If order complete, increment completedOrders
     if (allOrderItemsComplete) {
       await prisma.workTask.update({
         where: { id: taskId },
@@ -155,13 +128,13 @@ export async function PATCH(
       });
     }
 
-    // Check if entire task is complete
+    // ✅ CHECK if entire task is complete
     const updatedTask = await prisma.workTask.findUnique({
       where: { id: taskId },
     });
 
     if (updatedTask && updatedTask.completedOrders >= updatedTask.totalOrders) {
-      // Get actual count of completed items
+      // ✅ Get actual count of completed items
       const actualCompletedItems = await prisma.taskItem.count({
         where: {
           taskId: taskId,
@@ -174,7 +147,7 @@ export async function PATCH(
         data: {
           status: "COMPLETED",
           completedAt: new Date(),
-          completedItems: actualCompletedItems,
+          completedItems: actualCompletedItems, // ✅ Use actual count
         },
       });
 
