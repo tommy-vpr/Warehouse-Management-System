@@ -5,6 +5,25 @@ import { authOptions } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import type { ReassignmentReason } from "@/types/audit-trail";
 import { notifyUser } from "@/lib/ably-server";
+import { Prisma } from "@prisma/client";
+
+type PackingTask = Prisma.WorkTaskGetPayload<{
+  include: {
+    assignedUser: { select: { id: true; name: true; email: true } };
+    taskItems: {
+      include: {
+        order: {
+          select: {
+            id: true;
+            orderNumber: true;
+            customerName: true;
+            status: true;
+          };
+        };
+      };
+    };
+  };
+}>;
 
 export async function POST(
   req: NextRequest,
@@ -35,6 +54,9 @@ export async function POST(
         { status: 403 }
       );
     }
+
+    const managerName: string =
+      user.name ?? session.user.name ?? session.user.email ?? "Unknown User";
 
     const { id: taskId } = await params;
     const body = await req.json();
@@ -124,7 +146,7 @@ export async function POST(
         newStaffId,
         newUser,
         session.user.id,
-        user.name || session.user.email,
+        managerName,
         reason,
         notes
       );
@@ -135,7 +157,7 @@ export async function POST(
         newStaffId,
         newUser,
         session.user.id,
-        user.name || session.user.email,
+        managerName,
         reason,
         notes
       );
@@ -155,11 +177,11 @@ export async function POST(
 }
 
 async function createContinuationTask(
-  originalTask: any,
-  inProgressItems: any[],
-  pendingItems: any[],
+  originalTask: PackingTask,
+  inProgressItems: PackingTask["taskItems"],
+  pendingItems: PackingTask["taskItems"],
   newStaffId: string,
-  newUser: any,
+  newUser: { id: string; name: string | null; email: string | null },
   managerId: string,
   managerName: string,
   reason: ReassignmentReason,
@@ -336,9 +358,9 @@ async function createContinuationTask(
 }
 
 async function simpleReassignment(
-  originalTask: any,
+  originalTask: PackingTask,
   newStaffId: string,
-  newUser: any,
+  newUser: { id: string; name: string | null; email: string | null },
   managerId: string,
   managerName: string,
   reason: ReassignmentReason,
