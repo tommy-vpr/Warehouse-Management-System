@@ -280,7 +280,7 @@ function DesktopDashboard({
 }: any) {
   return (
     <div className="min-h-screen bg-background">
-      <div className="space-y-6">
+      <div className="space-y-6 pt-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card>

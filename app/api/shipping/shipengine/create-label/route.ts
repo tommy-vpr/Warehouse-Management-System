@@ -9,8 +9,8 @@ function lazy(module: string) {
   return () => import(module);
 }
 
-const loadShippingAudit = lazy("@/lib/shipping-audit");
-const loadShipmentQueue = lazy("@/lib/queues/shipment-queue");
+import * as ShippingAudit from "@/lib/shipping-audit";
+import * as ShipmentQueue from "@/lib/queues/shipment-queue";
 
 type ReleasedReservationSummary = {
   productVariantId: string;
@@ -115,13 +115,13 @@ export async function POST(request: NextRequest) {
       logLabelGenerated,
       logBatchLabelsGenerated,
       completeShippingTask,
-    } = await loadShippingAudit();
+    } = ShippingAudit;
 
     const {
       queuePackingSlipGeneration,
       queueShopifyFulfillment,
       queueShipmentNotification,
-    } = await loadShipmentQueue();
+    } = ShipmentQueue;
 
     const userId = session.user.id;
 

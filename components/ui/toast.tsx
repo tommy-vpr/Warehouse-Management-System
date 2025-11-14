@@ -57,7 +57,11 @@ const Toast = React.forwardRef<
   return (
     <ToastPrimitives.Root
       ref={ref}
-      className={cn(toastVariants({ variant }), className)}
+      className={cn(
+        toastVariants({ variant }),
+        "w-[90%] mx-auto sm:w-full",
+        className
+      )}
       {...props}
     >
       <div className="flex items-start space-x-3">

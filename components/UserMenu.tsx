@@ -155,10 +155,12 @@ export default function UserMenu() {
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem>
-          <HelpCircle className="mr-2 h-4 w-4" />
-          <span>Help & Support</span>
-        </DropdownMenuItem>
+        <Link href="/dashboard/help-&-support">
+          <DropdownMenuItem className="cursor-pointer dark:hover:bg-zinc-800">
+            <HelpCircle className="mr-2 h-4 w-4" />
+            <span>Help & Support</span>
+          </DropdownMenuItem>
+        </Link>
 
         <DropdownMenuSeparator />
 
