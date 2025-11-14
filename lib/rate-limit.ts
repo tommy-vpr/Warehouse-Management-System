@@ -72,5 +72,17 @@ export function rateLimitResponse(
       }
     );
   }
-  return null;
+
+  // When success = true, return a harmless OK response
+  return Response.json(
+    { success: true },
+    {
+      status: 200,
+      headers: {
+        "X-RateLimit-Limit": limit.toString(),
+        "X-RateLimit-Remaining": remaining.toString(),
+        "X-RateLimit-Reset": reset.toString(),
+      },
+    }
+  );
 }
