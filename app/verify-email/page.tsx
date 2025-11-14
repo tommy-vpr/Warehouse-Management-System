@@ -1,7 +1,7 @@
 // app/verify-email/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,14 +9,26 @@ import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
-export default function VerifyEmail(props: {
-  params: Promise<{}>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
+// -------------------------
+// PAGE WRAPPED IN SUSPENSE
+// -------------------------
+export default function Page() {
+  return (
+    <Suspense fallback={null}>
+      <VerifyEmailContent />
+    </Suspense>
+  );
+}
+
+// -------------------------
+// ACTUAL CLIENT COMPONENT
+// -------------------------
+function VerifyEmailContent() {
   const [status, setStatus] = useState<"loading" | "success" | "error">(
     "loading"
   );
   const [message, setMessage] = useState("");
+
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get("token");
@@ -41,13 +53,12 @@ export default function VerifyEmail(props: {
         if (response.ok) {
           setStatus("success");
           setMessage("Email verified successfully! You can now sign in.");
-          // Redirect to sign-in after 3 seconds
           setTimeout(() => router.push("/"), 3000);
         } else {
           setStatus("error");
           setMessage(data.error || "Verification failed");
         }
-      } catch (error) {
+      } catch {
         setStatus("error");
         setMessage("An unexpected error occurred");
       }

@@ -5,26 +5,12 @@ import { authOptions } from "@/lib/auth";
 import { InventoryReservation, Prisma } from "@prisma/client";
 import { updateOrderStatus } from "@/lib/order-status-helper";
 
-import {
-  updateShopifyFulfillment,
-  getShopifyCarrierName,
-} from "@/lib/shopify-fulfillment";
+function lazy(module: string) {
+  return () => import(module);
+}
 
-import {
-  getOrCreateShippingTask,
-  logCarrierSelected,
-  logPackageWeighed,
-  logPackageDimensions,
-  logLabelGenerated,
-  logBatchLabelsGenerated,
-  completeShippingTask,
-} from "@/lib/shipping-audit";
-
-import {
-  queuePackingSlipGeneration,
-  queueShopifyFulfillment,
-  queueShipmentNotification,
-} from "@/lib/queues/shipment-queue"; // ✅ Use .local
+const loadShippingAudit = lazy("@/lib/shipping-audit");
+const loadShipmentQueue = lazy("@/lib/queues/shipment-queue");
 
 type ReleasedReservationSummary = {
   productVariantId: string;
@@ -119,6 +105,23 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // SAFE: loads only when invoked, not at build time
+    const {
+      getOrCreateShippingTask,
+      logCarrierSelected,
+      logPackageWeighed,
+      logPackageDimensions,
+      logLabelGenerated,
+      logBatchLabelsGenerated,
+      completeShippingTask,
+    } = await loadShippingAudit();
+
+    const {
+      queuePackingSlipGeneration,
+      queueShopifyFulfillment,
+      queueShipmentNotification,
+    } = await loadShipmentQueue();
 
     const userId = session.user.id;
 
