@@ -39,7 +39,8 @@ export async function GET(req: NextRequest) {
 
     console.log("✅ Barcode generated successfully");
 
-    return new NextResponse(png, {
+    // Convert Buffer to Uint8Array for Next.js
+    return new NextResponse(new Uint8Array(png), {
       headers: {
         "Content-Type": "image/png",
         "Cache-Control": "public, max-age=31536000, immutable",

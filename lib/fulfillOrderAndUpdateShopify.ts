@@ -48,8 +48,8 @@ export async function fulfillOrderAndUpdateShopify(
         pendingSync.data as any;
       const result = await updateShopifyFulfillment({
         orderId: order.shopifyOrderId!,
-        trackingNumber,
-        trackingUrl,
+        trackingNumbers: trackingNumber ? [trackingNumber] : [],
+        trackingUrls: trackingUrl ? [trackingUrl] : [],
         trackingCompany: getShopifyCarrierName(carrier),
         lineItems: items,
         notifyCustomer: true,

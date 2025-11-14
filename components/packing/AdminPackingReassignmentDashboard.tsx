@@ -28,12 +28,67 @@ const REASSIGNMENT_REASONS: { value: ReassignmentReason; label: string }[] = [
   { value: "OTHER", label: "Other" },
 ];
 
+interface Order {
+  id: string;
+  orderNumber: string;
+}
+
+interface TaskItem {
+  id: string;
+  order?: Order;
+}
+
+interface PackingTask {
+  id: string;
+  taskNumber: string;
+  status: "IN_PROGRESS" | "ASSIGNED" | "PAUSED" | "COMPLETED";
+  totalOrders: number;
+  completedOrders: number;
+  assignedTo: string;
+  taskItems?: TaskItem[];
+}
+
+interface StaffMember {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
+interface StaffWithWorkload extends StaffMember {
+  activeTasks: number;
+  remainingOrders: number;
+  packingTasks: PackingTask[];
+}
+
+interface TasksResponse {
+  tasks?: PackingTask[];
+}
+
+interface AuditEvent {
+  id: string;
+  eventType: string;
+  createdAt: string;
+  notes?: string;
+  data?: {
+    fromUserName?: string;
+    toUserName?: string;
+    taskNumber?: string;
+    continuationTaskNumber?: string;
+    reason?: ReassignmentReason;
+  };
+}
+
 function AdminPackingReassignmentDashboard() {
-  const [selectedStaff, setSelectedStaff] = useState(null);
+  const [selectedStaff, setSelectedStaff] = useState<StaffWithWorkload | null>(
+    null
+  );
   const [showAuditTrail, setShowAuditTrail] = useState(false);
 
   // Fetch users
-  const { data: staffData = [], isLoading: staffLoading } = useQuery({
+  const { data: staffData = [], isLoading: staffLoading } = useQuery<
+    StaffMember[]
+  >({
     queryKey: ["users", "staff"],
     queryFn: async () => {
       const response = await fetch("/api/users?role=STAFF");
@@ -47,7 +102,7 @@ function AdminPackingReassignmentDashboard() {
     data: tasksResponse,
     isLoading: tasksLoading,
     refetch: reloadTasks,
-  } = useQuery({
+  } = useQuery<TasksResponse | PackingTask[]>({
     queryKey: ["packing-tasks", "active"],
     queryFn: async () => {
       const response = await fetch(
@@ -60,10 +115,12 @@ function AdminPackingReassignmentDashboard() {
   });
 
   // Handle paginated response format
-  const tasksData = tasksResponse?.tasks || tasksResponse || [];
+  const tasksData: PackingTask[] = Array.isArray(tasksResponse)
+    ? tasksResponse
+    : tasksResponse?.tasks || [];
 
   // Calculate workload for each staff
-  const staff = staffData.map((s) => {
+  const staff: StaffWithWorkload[] = staffData.map((s) => {
     const assignedTasks = tasksData.filter((t) => t.assignedTo === s.id);
 
     const totalRemaining = assignedTasks.reduce(
@@ -84,7 +141,7 @@ function AdminPackingReassignmentDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-12 h-12 text-blue-600 dark:text-blue-400 mx-auto mb-4 animate-spin" />{" "}
+        <Loader2 className="w-12 h-12 text-blue-600 dark:text-blue-400 mx-auto mb-4 animate-spin" />
       </div>
     );
   }
@@ -200,7 +257,15 @@ function AdminPackingReassignmentDashboard() {
   );
 }
 
-function StatCard({ icon, label, value, total, color }) {
+interface StatCardProps {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  total?: number;
+  color: "blue" | "green" | "orange" | "purple";
+}
+
+function StatCard({ icon, label, value, total, color }: StatCardProps) {
   const colors = {
     blue: "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
     green:
@@ -229,10 +294,15 @@ function StatCard({ icon, label, value, total, color }) {
   );
 }
 
-function StaffWorkloadRow({ staff, onSelectStaff }) {
+interface StaffWorkloadRowProps {
+  staff: StaffWithWorkload;
+  onSelectStaff: () => void;
+}
+
+function StaffWorkloadRow({ staff, onSelectStaff }: StaffWorkloadRowProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const getWorkloadLevel = () => {
+  const getWorkloadLevel = (): { label: string; color: string } => {
     if (staff.remainingOrders === 0) return { label: "Idle", color: "gray" };
     if (staff.remainingOrders < 10) return { label: "Light", color: "green" };
     if (staff.remainingOrders < 30)
@@ -242,7 +312,7 @@ function StaffWorkloadRow({ staff, onSelectStaff }) {
 
   const workloadLevel = getWorkloadLevel();
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string): string => {
     switch (status) {
       case "IN_PROGRESS":
         return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
@@ -278,10 +348,10 @@ function StaffWorkloadRow({ staff, onSelectStaff }) {
                 workloadLevel.color === "gray"
                   ? "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
                   : workloadLevel.color === "green"
-                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                  : workloadLevel.color === "yellow"
-                  ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                  : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                    : workloadLevel.color === "yellow"
+                      ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
               }
             `}
           >
@@ -401,15 +471,27 @@ function StaffWorkloadRow({ staff, onSelectStaff }) {
   );
 }
 
-function BulkReassignmentModal({ staff, allStaff, onClose, onSuccess }) {
+interface BulkReassignmentModalProps {
+  staff: StaffWithWorkload;
+  allStaff: StaffWithWorkload[];
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function BulkReassignmentModal({
+  staff,
+  allStaff,
+  onClose,
+  onSuccess,
+}: BulkReassignmentModalProps) {
   const [targetStaffId, setTargetStaffId] = useState("");
-  const [selectedTasks, setSelectedTasks] = useState([]);
+  const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [reason, setReason] = useState<ReassignmentReason>("WORKLOAD_BALANCE");
   const [notes, setNotes] = useState("");
   const [strategy, setStrategy] = useState("split");
   const [loading, setLoading] = useState(false);
 
-  const toggleTask = (taskId) => {
+  const toggleTask = (taskId: string) => {
     setSelectedTasks((prev) =>
       prev.includes(taskId)
         ? prev.filter((id) => id !== taskId)
@@ -456,7 +538,7 @@ function BulkReassignmentModal({ staff, allStaff, onClose, onSuccess }) {
       toast({
         variant: "destructive",
         title: "❌ Reassignment Failed",
-        description: error.message,
+        description: (error as Error).message,
       });
     } finally {
       setLoading(false);
@@ -679,8 +761,14 @@ function BulkReassignmentModal({ staff, allStaff, onClose, onSuccess }) {
   );
 }
 
-function ReassignmentAuditTrailModal({ onClose }) {
-  const [events, setEvents] = useState([]);
+interface ReassignmentAuditTrailModalProps {
+  onClose: () => void;
+}
+
+function ReassignmentAuditTrailModal({
+  onClose,
+}: ReassignmentAuditTrailModalProps) {
+  const [events, setEvents] = useState<AuditEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -700,7 +788,7 @@ function ReassignmentAuditTrailModal({ onClose }) {
         return;
       }
 
-      const data = await response.json();
+      const data: AuditEvent[] = await response.json();
       setEvents(data);
     } catch (error) {
       console.error("Failed to load reassignment history:", error);
@@ -764,7 +852,7 @@ function ReassignmentAuditTrailModal({ onClose }) {
                     <div className="text-sm text-gray-600 dark:text-gray-400">
                       Reason:{" "}
                       {REASSIGNMENT_REASONS.find(
-                        (r) => r.value === event.data.reason
+                        (r) => r.value === event.data?.reason
                       )?.label || event.data.reason}
                     </div>
                   )}

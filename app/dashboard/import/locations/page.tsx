@@ -11,12 +11,43 @@ import {
   Package,
 } from "lucide-react";
 
-const LocationInventoryImport = (props: {
-  params: Promise<{}>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) => {
+interface PageProps {
+  params: Promise<Record<string, string>>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+interface ParsedRow {
+  SKU: string;
+  LOCATION: string;
+  WAREHOUSE: string;
+  AISLE: string;
+  BAY: string;
+  TIER: string;
+  SPACE: string;
+  BIN: string;
+}
+
+interface LocationGroup {
+  location: {
+    name: string;
+    warehouseNumber: number;
+    aisle: string;
+    bay: number;
+    tier: string;
+    space: number;
+    bin: string;
+    barcode: string;
+    type: string;
+    zone: string;
+    isPickable: boolean;
+    isReceivable: boolean;
+  };
+  skus: string[];
+}
+
+const LocationInventoryImport = ({ params, searchParams }: PageProps) => {
   const [step, setStep] = useState(1);
-  const [parsedData, setParsedData] = useState([]);
+  const [parsedData, setParsedData] = useState<ParsedRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -26,34 +57,21 @@ const LocationInventoryImport = (props: {
   });
   const [summary, setSummary] = useState({ locations: 0, inventory: 0 });
 
-  const parseCSV = (csvText) => {
+  const parseCSV = (csvText: string): ParsedRow[] => {
     const lines = csvText.trim().split("\n");
     const headers = lines[0].split(",").map((h) => h.trim().replace(/"/g, ""));
 
     return lines.slice(1).map((line) => {
       const values = line.split(",").map((v) => v.trim().replace(/"/g, ""));
-      const row = {};
+      const row: any = {};
       headers.forEach((header, index) => {
         row[header] = values[index] || "";
       });
-      return row;
+      return row as ParsedRow;
     });
   };
 
-  // const generateLocationBarcode = (locationData) => {
-  //   const aisleCode = locationData.AISLE.charCodeAt(0) - 64;
-  //   const tierCode = locationData.TIER.charCodeAt(0) - 64;
-  //   const binCode = locationData.BIN.charCodeAt(0) - 87;
-
-  //   return `${locationData.WAREHOUSE}${aisleCode
-  //     .toString()
-  //     .padStart(2, "0")}${locationData.BAY.toString().padStart(
-  //     2,
-  //     "0"
-  //   )}${tierCode}${locationData.SPACE}${binCode}`;
-  // };
-
-  const determineLocationType = (tier) => {
+  const determineLocationType = (tier: string): string => {
     switch (tier) {
       case "A":
         return "STORAGE";
@@ -66,15 +84,15 @@ const LocationInventoryImport = (props: {
     }
   };
 
-  const handleCSVUpload = useCallback((file) => {
+  const handleCSVUpload = useCallback((file: File) => {
     setLoading(true);
     setError("");
     setSuccess("");
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = (e: ProgressEvent<FileReader>) => {
       try {
-        const csvData = parseCSV(e.target.result);
+        const csvData = parseCSV(e.target?.result as string);
 
         const requiredColumns = [
           "SKU",
@@ -97,7 +115,6 @@ const LocationInventoryImport = (props: {
           );
         }
 
-        // Get unique locations and count SKUs per location
         const uniqueLocations = new Set(csvData.map((row) => row.LOCATION));
 
         setParsedData(csvData);
@@ -112,7 +129,7 @@ const LocationInventoryImport = (props: {
         setStep(2);
         setLoading(false);
       } catch (err) {
-        setError(`Error parsing CSV: ${err.message}`);
+        setError(`Error parsing CSV: ${(err as Error).message}`);
         setLoading(false);
       }
     };
@@ -125,8 +142,7 @@ const LocationInventoryImport = (props: {
     setSuccess("");
 
     try {
-      // Group data by location
-      const locationGroups = {};
+      const locationGroups: Record<string, LocationGroup> = {};
       parsedData.forEach((row) => {
         if (!locationGroups[row.LOCATION]) {
           locationGroups[row.LOCATION] = {
@@ -153,7 +169,6 @@ const LocationInventoryImport = (props: {
       const locations = Object.values(locationGroups);
       setImportProgress({ current: 0, total: locations.length });
 
-      // Import each location with its inventory
       for (let i = 0; i < locations.length; i++) {
         const locationData = locations[i];
 
@@ -180,20 +195,24 @@ const LocationInventoryImport = (props: {
       setStep(3);
       setLoading(false);
     } catch (err) {
-      setError(`Import failed: ${err.message}`);
+      setError(`Import failed: ${(err as Error).message}`);
       setLoading(false);
     }
   };
 
-  const FileDropZone = ({ onFileSelect }) => {
-    const handleDrop = (e) => {
+  const FileDropZone = ({
+    onFileSelect,
+  }: {
+    onFileSelect: (file: File) => void;
+  }) => {
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
       const files = Array.from(e.dataTransfer.files);
       if (files[0]) onFileSelect(files[0]);
     };
 
-    const handleFileInput = (e) => {
-      if (e.target.files[0]) onFileSelect(e.target.files[0]);
+    const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files?.[0]) onFileSelect(e.target.files[0]);
     };
 
     return (

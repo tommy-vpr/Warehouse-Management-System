@@ -203,7 +203,11 @@ export async function createReturn(
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: {
-      items: true,
+      items: {
+        include: {
+          productVariant: true,
+        },
+      },
     },
   });
 
@@ -826,6 +830,16 @@ export async function processRefund(returnOrderId: string, userId: string) {
   // Calculate refund
   const refundCalc = await calculateRefund(returnOrderId);
 
+  // Serialize the refund calculation for JSON storage
+  const refundBreakdown = {
+    itemRefunds: refundCalc.itemRefunds,
+    subtotal: refundCalc.subtotal,
+    restockingFee: refundCalc.restockingFee,
+    adjustments: refundCalc.adjustments,
+    shippingRefund: refundCalc.shippingRefund,
+    finalRefundAmount: refundCalc.finalRefundAmount,
+  };
+
   // Update return order
   await prisma.returnOrder.update({
     where: { id: returnOrderId },
@@ -839,7 +853,7 @@ export async function processRefund(returnOrderId: string, userId: string) {
           userId,
           data: {
             refundAmount: refundCalc.finalRefundAmount,
-            breakdown: refundCalc,
+            breakdown: refundBreakdown,
           },
         },
       },

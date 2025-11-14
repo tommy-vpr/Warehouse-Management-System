@@ -370,10 +370,17 @@ async function simpleReassignment(
 ) {
   return await prisma.$transaction(async (tx) => {
     // Calculate progress
-    const totalOrders = originalTask.taskItems.length;
-    const completedOrders = originalTask.taskItems.filter(
-      (item) => item.status === "COMPLETED"
-    ).length;
+    const uniqueOrderIds = new Set(
+      originalTask.taskItems.map((item: any) => item.orderId)
+    );
+    const totalOrders = uniqueOrderIds.size;
+
+    const completedOrderIds = new Set(
+      originalTask.taskItems
+        .filter((item: any) => item.status === "COMPLETED")
+        .map((item: any) => item.orderId)
+    );
+    const completedOrders = completedOrderIds.size;
 
     // Update task
     const updated = await tx.workTask.update({

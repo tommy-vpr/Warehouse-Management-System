@@ -12,13 +12,44 @@ import {
   Loader2,
 } from "lucide-react";
 
-function AssignOrdersToPacking(props: {
-  params: Promise<{}>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
-  const [orders, setOrders] = useState([]);
-  const [staff, setStaff] = useState([]);
-  const [selectedOrders, setSelectedOrders] = useState([]);
+interface PageProps {
+  params: Promise<Record<string, string>>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+interface OrderItem {
+  id: string;
+  quantity: number;
+  sku: string;
+}
+
+interface Order {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  status: string;
+  createdAt: string;
+  items?: OrderItem[];
+  packingAssignedTo?: string | null;
+}
+
+interface Workload {
+  activePackingTasks: number;
+  remainingOrders: number;
+  status: "idle" | "light" | "moderate" | "heavy";
+}
+
+interface Staff {
+  id: string;
+  name: string;
+  role: string;
+  workload?: Workload;
+}
+
+function AssignOrdersToPacking({ params, searchParams }: PageProps) {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [selectedStaff, setSelectedStaff] = useState("");
   const [priority, setPriority] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -37,8 +68,8 @@ function AssignOrdersToPacking(props: {
         fetch("/api/users?role=STAFF&includeWorkload=true"),
       ]);
 
-      const ordersData = await ordersRes.json();
-      const staffData = await staffRes.json();
+      const ordersData: Order[] = await ordersRes.json();
+      const staffData: Staff[] = await staffRes.json();
 
       console.log("Picked orders:", ordersData);
       console.log("Staff data:", staffData);
@@ -52,7 +83,7 @@ function AssignOrdersToPacking(props: {
     }
   };
 
-  const toggleOrder = (orderId) => {
+  const toggleOrder = (orderId: string) => {
     setSelectedOrders((prev) =>
       prev.includes(orderId)
         ? prev.filter((id) => id !== orderId)
@@ -342,10 +373,10 @@ function AssignOrdersToPacking(props: {
                             staffMember.workload.status === "idle"
                               ? "text-gray-600 dark:text-gray-400"
                               : staffMember.workload.status === "light"
-                              ? "text-green-600 dark:text-green-400"
-                              : staffMember.workload.status === "moderate"
-                              ? "text-yellow-600 dark:text-yellow-400"
-                              : "text-red-600 dark:text-red-400"
+                                ? "text-green-600 dark:text-green-400"
+                                : staffMember.workload.status === "moderate"
+                                  ? "text-yellow-600 dark:text-yellow-400"
+                                  : "text-red-600 dark:text-red-400"
                           }`}
                         >
                           {staffMember.workload.status}
@@ -388,7 +419,14 @@ function AssignOrdersToPacking(props: {
   );
 }
 
-function StatCard({ label, value, icon, color }) {
+interface StatCardProps {
+  label: string;
+  value: number;
+  icon: React.ReactNode;
+  color: "blue" | "green" | "purple" | "orange";
+}
+
+function StatCard({ label, value, icon, color }: StatCardProps) {
   const colors = {
     blue: "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
     green:
@@ -416,7 +454,13 @@ function StatCard({ label, value, icon, color }) {
   );
 }
 
-function OrderRow({ order, selected, onToggle }) {
+interface OrderRowProps {
+  order: Order;
+  selected: boolean;
+  onToggle: () => void;
+}
+
+function OrderRow({ order, selected, onToggle }: OrderRowProps) {
   const itemCount =
     order.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
 

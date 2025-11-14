@@ -1,5 +1,6 @@
 // lib/audit-helper.ts
 import { prisma } from "@/lib/prisma";
+import { OrderStatus } from "@prisma/client";
 
 /**
  * Track order reassignment events
@@ -8,7 +9,7 @@ export async function trackOrderReassignment(params: {
   orderId: string;
   fromUserId: string | null;
   toUserId: string;
-  stage: "PICKING" | "PACKING" | "SHIPPING";
+  stage: OrderStatus;
   userId: string; // Who made the reassignment
   notes?: string;
 }) {
@@ -26,10 +27,10 @@ export async function trackOrderReassignment(params: {
   await prisma.orderStatusHistory.create({
     data: {
       orderId,
-      fromStatus: stage,
-      toStatus: stage,
+      previousStatus: stage,
+      newStatus: stage,
       notes: statusNote,
-      userId,
+      changedBy: userId,
     },
   });
 }
@@ -49,12 +50,12 @@ export async function trackPickListWaveChange(params: {
   await prisma.orderStatusHistory.create({
     data: {
       orderId,
-      fromStatus: "PICKING",
-      toStatus: "PICKING",
+      previousStatus: "PICKING" as OrderStatus,
+      newStatus: "PICKING" as OrderStatus,
       notes: `Pick list wave changed from ${
         fromBatchNumber || "None"
       } to ${toBatchNumber}${notes ? ` - ${notes}` : ""}`,
-      userId,
+      changedBy: userId,
     },
   });
 }
@@ -74,12 +75,12 @@ export async function trackPackingTaskChange(params: {
   await prisma.orderStatusHistory.create({
     data: {
       orderId,
-      fromStatus: "PACKING",
-      toStatus: "PACKING",
+      previousStatus: "PACKING" as OrderStatus,
+      newStatus: "PACKING" as OrderStatus,
       notes: `Packing task changed from ${
         fromTaskNumber || "None"
       } to ${toTaskNumber}${notes ? ` - ${notes}` : ""}`,
-      userId,
+      changedBy: userId,
     },
   });
 }
@@ -91,20 +92,22 @@ export async function trackPriorityChange(params: {
   orderId: string;
   fromPriority: string;
   toPriority: string;
+  currentStatus: OrderStatus;
   userId: string;
   notes?: string;
 }) {
-  const { orderId, fromPriority, toPriority, userId, notes } = params;
+  const { orderId, fromPriority, toPriority, currentStatus, userId, notes } =
+    params;
 
   await prisma.orderStatusHistory.create({
     data: {
       orderId,
-      fromStatus: "PRIORITY_CHANGE",
-      toStatus: "PRIORITY_CHANGE",
+      previousStatus: currentStatus,
+      newStatus: currentStatus,
       notes: `Priority changed from ${fromPriority} to ${toPriority}${
         notes ? ` - ${notes}` : ""
       }`,
-      userId,
+      changedBy: userId,
     },
   });
 }
@@ -116,17 +119,18 @@ export async function trackManualAdjustment(params: {
   orderId: string;
   action: string;
   description: string;
+  currentStatus: OrderStatus;
   userId: string;
 }) {
-  const { orderId, action, description, userId } = params;
+  const { orderId, action, description, currentStatus, userId } = params;
 
   await prisma.orderStatusHistory.create({
     data: {
       orderId,
-      fromStatus: "MANUAL_ADJUSTMENT",
-      toStatus: "MANUAL_ADJUSTMENT",
+      previousStatus: currentStatus,
+      newStatus: currentStatus,
       notes: `${action}: ${description}`,
-      userId,
+      changedBy: userId,
     },
   });
 }
@@ -137,17 +141,18 @@ export async function trackManualAdjustment(params: {
 export async function trackOrderComment(params: {
   orderId: string;
   comment: string;
+  currentStatus: OrderStatus;
   userId: string;
 }) {
-  const { orderId, comment, userId } = params;
+  const { orderId, comment, currentStatus, userId } = params;
 
   await prisma.orderStatusHistory.create({
     data: {
       orderId,
-      fromStatus: "COMMENT",
-      toStatus: "COMMENT",
+      previousStatus: currentStatus,
+      newStatus: currentStatus,
       notes: comment,
-      userId,
+      changedBy: userId,
     },
   });
 }

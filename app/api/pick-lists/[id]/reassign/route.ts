@@ -35,6 +35,9 @@ export async function POST(
         { status: 403 }
       );
     }
+
+    const managerName = user.name || session.user.email || "Unknown Manager";
+
     const { id: pickListId } = await params;
     const body = await req.json();
     const {
@@ -113,7 +116,7 @@ export async function POST(
         newStaffId,
         newUser,
         session.user.id,
-        user.name || session.user.email,
+        managerName,
         reason,
         notes
       );
@@ -124,7 +127,7 @@ export async function POST(
         newStaffId,
         newUser,
         session.user.id,
-        user.name || session.user.email,
+        managerName,
         reason,
         notes
       );
@@ -274,7 +277,7 @@ async function createContinuationPickList(
     await tx.pickEvent.create({
       data: {
         pickListId: continuationList.id,
-        eventType: "PICK_ASSIGNED",
+        eventType: "PICK_REASSIGNED",
         userId: newStaffId,
         notes: `Assigned continuation from ${originalList.batchNumber}`,
         data: {
@@ -322,7 +325,7 @@ async function simpleReassignment(
     // Calculate progress
     const totalItems = originalList.items.length;
     const pickedItems = originalList.items.filter(
-      (item) => item.status === "PICKED"
+      (item: any) => item.status === "PICKED"
     ).length;
 
     // Update pick list
