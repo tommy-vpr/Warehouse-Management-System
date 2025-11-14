@@ -1,10 +1,11 @@
 // app/dashboard/picking/progress/[id]/page.tsx
 import PickListProgressView from "@/components/picking/Picklistprogressview";
 
-export default function PickListProgressPage({
+export default async function PickListProgressPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  return <PickListProgressView pickListId={params.id} />;
+  const { id } = await params;
+  return <PickListProgressView pickListId={id} />;
 }

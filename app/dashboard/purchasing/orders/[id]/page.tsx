@@ -40,7 +40,7 @@ interface PODetails {
 }
 
 export default function PurchaseOrderDetail(props: {
-  params: Promise<{}>;
+  params: Promise<{ id: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const params = useParams<{ id: string }>();
