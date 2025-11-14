@@ -155,33 +155,6 @@ export default function EnhancedPackingInterface(props: {
   );
   const [packingSlipsGenerating, setPackingSlipsGenerating] = useState(false);
 
-  // ✅ NEW: Ably connection for real-time updates
-  useEffect(() => {
-    if (!order?.id) return;
-
-    const ably = new Ably.Realtime({
-      authUrl: "/api/ably/auth",
-    });
-
-    const channel = ably.channels.get(`order:${order.id}`);
-
-    channel.subscribe("update", (message) => {
-      console.log("📥 Received order update:", message.data);
-
-      if (message.data.type === "packing_slips_ready") {
-        console.log("✅ Packing slips ready!");
-
-        // Refresh packages to get updated packing slip URLs
-        refreshPackages();
-      }
-    });
-
-    return () => {
-      channel.unsubscribe();
-      ably.close();
-    };
-  }, [order?.id]);
-
   // ✅ NEW: Function to refresh packages
   const refreshPackages = useCallback(async () => {
     if (!order?.id) return;
@@ -197,40 +170,84 @@ export default function EnhancedPackingInterface(props: {
         const allReady = data.shippingPackages?.every(
           (pkg: any) => pkg.packingSlipUrl
         );
-        if (allReady && pollingInterval) {
-          clearInterval(pollingInterval);
-          setPollingInterval(null);
+        if (allReady) {
+          // ✅ No direct check
+          console.log("✅ All packing slips ready!");
           setPackingSlipsGenerating(false);
+          // ✅ Use state updater to clear interval
+          setPollingInterval((current) => {
+            if (current) clearInterval(current);
+            return null;
+          });
         }
       }
     } catch (error) {
       console.error("Failed to refresh packages:", error);
     }
-  }, [order?.id, pollingInterval]);
+  }, [order?.id]); // ✅ Only order.id as dependency
+
+  // ✅ NEW: Ably connection for real-time updates
+  useEffect(() => {
+    if (!order?.id) return;
+
+    console.log("🔌 Connecting to Ably for order:", order.id);
+
+    const ably = new Ably.Realtime({
+      authUrl: "/api/ably/auth",
+    });
+
+    const channel = ably.channels.get(`order:${order.id}`);
+
+    const handleUpdate = (message: any) => {
+      // ✅ Named function
+      console.log("📥 Received order update:", message.data);
+
+      if (message.data.type === "packing_slips_ready") {
+        console.log("✅ Packing slips ready via Ably!");
+        refreshPackages();
+      }
+    };
+
+    channel.subscribe("update", handleUpdate);
+
+    return () => {
+      console.log("🔌 Disconnecting from Ably");
+      channel.unsubscribe("update", handleUpdate);
+      ably.close();
+    };
+  }, [order?.id, refreshPackages]); // ✅ Include refreshPackages
 
   // ✅ NEW: Start polling for packing slips (fallback if Ably fails)
   const startPackingSlipPolling = useCallback(() => {
-    if (pollingInterval) return; // Already polling
-
-    console.log("🔄 Starting packing slip polling...");
-    setPackingSlipsGenerating(true);
-
-    const interval = setInterval(() => {
-      refreshPackages();
-    }, 3000); // Poll every 3 seconds
-
-    setPollingInterval(interval);
-
-    // Stop polling after 2 minutes (safety timeout)
-    setTimeout(() => {
-      if (interval) {
-        clearInterval(interval);
-        setPollingInterval(null);
-        setPackingSlipsGenerating(false);
-        console.log("⏱️ Packing slip polling timed out");
+    // ✅ Use state updater to check if already polling
+    setPollingInterval((current) => {
+      if (current) {
+        console.log("⚠️ Already polling");
+        return current; // Don't change if already set
       }
-    }, 120000);
-  }, [pollingInterval, refreshPackages]);
+
+      console.log("🔄 Starting packing slip polling...");
+      setPackingSlipsGenerating(true);
+
+      const interval = setInterval(() => {
+        refreshPackages();
+      }, 3000);
+
+      // Safety timeout
+      setTimeout(() => {
+        setPollingInterval((curr) => {
+          if (curr) {
+            clearInterval(curr);
+            setPackingSlipsGenerating(false);
+            console.log("⏱️ Polling timed out");
+          }
+          return null;
+        });
+      }, 120000);
+
+      return interval;
+    });
+  }, [refreshPackages]);
 
   // ✅ NEW: Check if packing slips are generating when packages load
   useEffect(() => {
@@ -241,7 +258,7 @@ export default function EnhancedPackingInterface(props: {
         startPackingSlipPolling();
       }
     }
-  }, [packages, isPackingComplete]);
+  }, [packages, isPackingComplete, startPackingSlipPolling]);
 
   // ✅ MODIFIED: Cleanup polling on unmount
   useEffect(() => {
@@ -657,7 +674,7 @@ export default function EnhancedPackingInterface(props: {
                           <Button
                             size="sm"
                             variant="outline"
-                            disabled
+                            disabled={false}
                             className="w-full sm:w-auto cursor-wait"
                             onClick={() => {
                               // ✅ Manual refresh trigger
