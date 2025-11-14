@@ -25,20 +25,7 @@ import { InsufficientInventoryItem } from "@/lib/reserveInventory";
 import InsufficientInventoryModal from "@/components/InsufficientInventoryModal";
 import { useRouter } from "next/navigation";
 import { OrdersTableSkeleton } from "@/components/skeleton/Orders";
-
-// Types - inline until you create the types file
-export enum OrderStatus {
-  PENDING = "PENDING",
-  ALLOCATED = "ALLOCATED",
-  PICKING = "PICKING",
-  PICKED = "PICKED",
-  PACKED = "PACKED",
-  SHIPPED = "SHIPPED",
-  DELIVERED = "DELIVERED",
-  CANCELLED = "CANCELLED",
-  RETURNED = "RETURNED",
-  FULFILLED = "FULFILLED",
-}
+import { OrderStatus } from "@/types/order";
 
 interface OrderItem {
   id: string;
