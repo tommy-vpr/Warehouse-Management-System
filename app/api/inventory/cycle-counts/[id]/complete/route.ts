@@ -1,13 +1,12 @@
 // app/api/inventory/cycle-counts/[id]/complete/route.ts - Real implementation
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -15,11 +14,11 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const taskId = params.id;
+    const { id } = await params;
 
     // Get the task with all related data
     const task = await prisma.cycleCountTask.findUnique({
-      where: { id: taskId },
+      where: { id },
       include: {
         productVariant: true,
         location: true,
@@ -33,7 +32,7 @@ export async function POST(
 
     // Update task status
     await prisma.cycleCountTask.update({
-      where: { id: taskId },
+      where: { id },
       data: {
         status: "COMPLETED",
         completedAt: new Date(),
@@ -43,7 +42,7 @@ export async function POST(
     // Create completion event
     await prisma.cycleCountEvent.create({
       data: {
-        taskId,
+        taskId: id,
         eventType: "TASK_COMPLETED",
         userId: session.user.id,
         notes: "Cycle count completed",

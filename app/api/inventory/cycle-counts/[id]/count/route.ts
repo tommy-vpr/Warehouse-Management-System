@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -15,11 +15,11 @@ export async function POST(
     }
 
     const { itemId, countedQuantity, notes, status } = await request.json();
-    const taskId = params.id;
+    const { id } = await params;
 
     // Get the task
     const task = await prisma.cycleCountTask.findUnique({
-      where: { id: taskId },
+      where: { id },
       include: {
         productVariant: true,
         location: true,
@@ -45,7 +45,7 @@ export async function POST(
 
     // Update the task
     const updatedTask = await prisma.cycleCountTask.update({
-      where: { id: taskId },
+      where: { id },
       data: {
         countedQuantity,
         variance,
@@ -60,7 +60,7 @@ export async function POST(
     // Create audit event
     await prisma.cycleCountEvent.create({
       data: {
-        taskId,
+        taskId: id,
         eventType: status === "SKIPPED" ? "COUNT_SKIPPED" : "COUNT_RECORDED",
         userId: session.user.id,
         previousValue: task.systemQuantity,
@@ -82,7 +82,7 @@ export async function POST(
           locationId: task.locationId,
           transactionType: "COUNT",
           quantityChange: variance,
-          referenceId: taskId,
+          referenceId: id,
           referenceType: "CYCLE_COUNT",
           userId: session.user.id,
           notes: `Cycle count adjustment: ${notes || ""}`,

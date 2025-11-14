@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -15,11 +15,11 @@ export async function POST(
     }
 
     const { countedQuantity, notes, status } = await request.json();
-    const taskId = params.id;
+    const { id } = await params;
 
     // Get the task with related data
     const task = await prisma.cycleCountTask.findUnique({
-      where: { id: taskId },
+      where: { id },
       include: {
         productVariant: true,
         location: true,
@@ -67,7 +67,7 @@ export async function POST(
     const result = await prisma.$transaction(async (tx) => {
       // Update the task
       const updatedTask = await tx.cycleCountTask.update({
-        where: { id: taskId },
+        where: { id },
         data: {
           countedQuantity: status === "SKIPPED" ? null : countedQuantity,
           variance,
@@ -83,7 +83,7 @@ export async function POST(
       // Create audit event
       await tx.cycleCountEvent.create({
         data: {
-          taskId,
+          taskId: id,
           eventType: status === "SKIPPED" ? "COUNT_SKIPPED" : "COUNT_RECORDED",
           userId: session.user.id,
           previousValue: task.systemQuantity,
@@ -120,7 +120,7 @@ export async function POST(
             locationId: task.locationId,
             transactionType: "COUNT",
             quantityChange: variance,
-            referenceId: taskId,
+            referenceId: id,
             referenceType: "CYCLE_COUNT",
             userId: session.user.id,
             notes: `Cycle count adjustment: ${
@@ -161,12 +161,12 @@ export async function POST(
         // ⭐ Include VARIANCE_REVIEW in completed count
         const completedCount = campaignTasks.filter((t) =>
           ["COMPLETED", "SKIPPED", "VARIANCE_REVIEW"].includes(
-            t.id === taskId ? finalStatus : t.status
+            t.id === id ? finalStatus : t.status
           )
         ).length;
 
         const varianceCount = campaignTasks.filter((t) => {
-          if (t.id === taskId) {
+          if (t.id === id) {
             return variance !== null && variance !== 0;
           }
           return t.variance !== null && t.variance !== 0;
@@ -185,7 +185,7 @@ export async function POST(
       if (requiresReview && task.campaignId) {
         await tx.cycleCountEvent.create({
           data: {
-            taskId,
+            taskId: id,
             eventType: "VARIANCE_NOTED",
             userId: session.user.id,
             notes: `High variance detected: ${variance} units (${variancePercentage?.toFixed(

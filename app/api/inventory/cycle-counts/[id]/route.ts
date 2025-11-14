@@ -7,7 +7,7 @@ import { authOptions } from "@/lib/auth";
 // app/api/inventory/cycle-counts/[id]/route.ts
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -15,11 +15,11 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const countId = params.id;
+    const { id } = await params;
 
     // Mock cycle count detail data
     const cycleCountDetail = {
-      id: countId,
+      id,
       batchNumber: "CC-2025-001",
       status: "IN_PROGRESS",
       countType: "ABC_ANALYSIS",

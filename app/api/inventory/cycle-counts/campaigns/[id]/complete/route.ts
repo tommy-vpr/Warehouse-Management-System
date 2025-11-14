@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -14,11 +14,11 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const campaignId = params.id;
+    const { id } = await params;
 
     // Get campaign with tasks
     const campaign = await prisma.cycleCountCampaign.findUnique({
-      where: { id: campaignId },
+      where: { id },
       include: {
         tasks: {
           include: {
@@ -68,7 +68,7 @@ export async function POST(
 
     // ⭐ UPDATE CAMPAIGN STATUS - This was missing!
     const updatedCampaign = await prisma.cycleCountCampaign.update({
-      where: { id: campaignId },
+      where: { id },
       data: {
         status: "COMPLETED",
         endDate: new Date(),
@@ -98,7 +98,7 @@ export async function POST(
 
     // Generate completion summary
     const summary = {
-      campaignId,
+      campaignId: id,
       totalTasks: campaign.totalTasks,
       completedTasks,
       skippedTasks: campaign.tasks.filter((task) => task.status === "SKIPPED")

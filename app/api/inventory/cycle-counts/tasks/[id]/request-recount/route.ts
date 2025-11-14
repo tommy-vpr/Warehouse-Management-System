@@ -6,7 +6,7 @@ import { notifyUser } from "@/lib/ably-server";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -31,10 +31,10 @@ export async function POST(
     // }
 
     const { notes, assignTo } = await request.json();
-    const taskId = params.id;
+    const { id } = await params;
 
     const task = await prisma.cycleCountTask.findUnique({
-      where: { id: taskId },
+      where: { id },
       include: {
         campaign: true,
         location: true,
@@ -73,7 +73,7 @@ export async function POST(
 
     const updatedTask = await prisma.$transaction(async (tx) => {
       const updated = await tx.cycleCountTask.update({
-        where: { id: taskId },
+        where: { id },
         data: {
           status: "RECOUNT_REQUIRED",
           requiresRecount: true,
@@ -103,7 +103,7 @@ export async function POST(
 
       await tx.cycleCountEvent.create({
         data: {
-          taskId,
+          taskId: id,
           eventType: "RECOUNT_REQUESTED",
           userId: session.user.id,
           notes: `Recount requested: ${notes || "No reason provided"}`,

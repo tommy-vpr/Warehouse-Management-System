@@ -5,7 +5,7 @@ import { authOptions } from "@/lib/auth";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -24,10 +24,10 @@ export async function POST(
     }
 
     const { notes } = await request.json();
-    const taskId = params.id;
+    const { id } = await params;
 
     const task = await prisma.cycleCountTask.findUnique({
-      where: { id: taskId },
+      where: { id },
       include: {
         campaign: true,
         productVariant: {
@@ -43,7 +43,7 @@ export async function POST(
     // ✅ Wrap logic in transaction
     const updatedTask = await prisma.$transaction(async (tx) => {
       const updated = await tx.cycleCountTask.update({
-        where: { id: taskId },
+        where: { id },
         data: {
           status: "COMPLETED",
           notes: notes
@@ -55,7 +55,7 @@ export async function POST(
       // ✅ Log event
       await tx.cycleCountEvent.create({
         data: {
-          taskId,
+          taskId: id,
           eventType: "TASK_COMPLETED",
           userId: session.user.id,
           previousValue: task.systemQuantity,
@@ -81,7 +81,7 @@ export async function POST(
 
         const completedCount = campaignTasks.filter((t) =>
           ["COMPLETED", "SKIPPED", "VARIANCE_REVIEW"].includes(
-            t.id === taskId ? "COMPLETED" : t.status
+            t.id === id ? "COMPLETED" : t.status
           )
         ).length;
 
