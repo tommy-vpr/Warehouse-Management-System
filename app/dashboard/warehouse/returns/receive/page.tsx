@@ -32,7 +32,10 @@ interface ReturnOrderDetails {
   }>;
 }
 
-export default function WarehouseReceivingPage() {
+export default function WarehouseReceivingPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const router = useRouter();
 
   const [rmaInput, setRmaInput] = useState("");

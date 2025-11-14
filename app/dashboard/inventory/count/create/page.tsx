@@ -30,7 +30,10 @@ interface Location {
   bin?: string;
 }
 
-export default function CreateCampaign() {
+export default function CreateCampaign(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();

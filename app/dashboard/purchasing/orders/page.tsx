@@ -40,7 +40,10 @@ interface PurchaseOrder {
   }>;
 }
 
-export default function PurchaseOrdersPage() {
+export default function PurchaseOrdersPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const queryClient = useQueryClient();

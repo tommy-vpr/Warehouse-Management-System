@@ -12,7 +12,10 @@ interface Location {
   type: string;
 }
 
-export default function PrintLabelsPage() {
+export default function PrintLabelsPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true); // Should start true
   const [error, setError] = useState(""); // Add error state

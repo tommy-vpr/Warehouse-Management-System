@@ -9,7 +9,10 @@ import SignIn from "@/app/auth/signin/page";
 import SignUp from "@/app/auth/signup/page";
 import { ArrowLeft } from "lucide-react";
 
-const Page = () => {
+const Page = (props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) => {
   const [activeForm, setActiveForm] = useState<"signin" | "signup" | null>(
     null
   );

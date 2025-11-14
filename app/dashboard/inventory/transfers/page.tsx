@@ -64,7 +64,10 @@ interface Transfer {
   };
 }
 
-export default function TransferDashboard() {
+export default function TransferDashboard(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const router = useRouter();
 
   // Filters

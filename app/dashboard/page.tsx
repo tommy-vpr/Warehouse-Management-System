@@ -38,7 +38,10 @@ import { useRouter } from "next/navigation";
 
 import { getActivityIcon } from "@/lib/activity-utils";
 
-export default function Dashboard() {
+export default function Dashboard(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const router = useRouter();
   const [createOpen, setCreateOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);

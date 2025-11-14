@@ -11,7 +11,10 @@ import {
   Package,
 } from "lucide-react";
 
-const LocationInventoryImport = () => {
+const LocationInventoryImport = (props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) => {
   const [step, setStep] = useState(1);
   const [parsedData, setParsedData] = useState([]);
   const [loading, setLoading] = useState(false);

@@ -44,7 +44,10 @@ interface PackingTaskResponse {
   totalCount: number;
 }
 
-export default function PackingTasksDashboard() {
+export default function PackingTasksDashboard(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const [currentPage, setCurrentPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const itemsPerPage = 20;

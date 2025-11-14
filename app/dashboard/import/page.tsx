@@ -3,7 +3,10 @@ import React from "react";
 
 import { Import } from "lucide-react";
 
-const ImportPage = () => {
+const ImportPage = (props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) => {
   return (
     <div className="min-h-screen flex justify-center items-center flex-col">
       <h3 className="mb-4 dark:text-gray-400">Import your file</h3>

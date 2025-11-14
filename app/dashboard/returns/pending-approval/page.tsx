@@ -32,7 +32,10 @@ interface PendingReturn {
   }>;
 }
 
-export default function PendingApprovalPage() {
+export default function PendingApprovalPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const [pendingReturns, setPendingReturns] = useState<PendingReturn[]>([]);
   const [selectedReturn, setSelectedReturn] = useState<PendingReturn | null>(
     null

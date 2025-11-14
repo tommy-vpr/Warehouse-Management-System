@@ -97,7 +97,10 @@ interface ShippingLabel {
   };
 }
 
-export default function ShippingLabelInterface() {
+export default function ShippingLabelInterface(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [shippingServices, setShippingServices] = useState<ShippingService[]>(
     []

@@ -45,7 +45,10 @@ const fetchNotifications = async ({
   return res.json();
 };
 
-export default function NotificationsPage() {
+export default function NotificationsPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const router = useRouter();
   const queryClient = useQueryClient();
 

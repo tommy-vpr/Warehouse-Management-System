@@ -75,7 +75,10 @@ interface InventoryResponse {
   totalCount: number;
 }
 
-export default function InventoryDashboard() {
+export default function InventoryDashboard(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const router = useRouter();
   const queryClient = useQueryClient();
 

@@ -22,7 +22,10 @@ import {
   FileDropZoneProps,
 } from "@/types/import-data";
 
-const EnhancedProductImportInterface = () => {
+const EnhancedProductImportInterface = (props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

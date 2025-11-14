@@ -52,7 +52,10 @@ interface Invoice {
   createdAt: string;
 }
 
-export default function InvoiceDashboardPage() {
+export default function InvoiceDashboardPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const { data: session } = useSession();
   const { toast } = useToast();
   const router = useRouter();

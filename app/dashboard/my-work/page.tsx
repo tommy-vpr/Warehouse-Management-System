@@ -58,7 +58,10 @@ interface MyWorkResponse {
   currentPage: number;
 }
 
-export default function MyWorkPage() {
+export default function MyWorkPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const [currentPage, setCurrentPage] = useState(1);
   const [taskType, setTaskType] = useState<string>("all");
   const [taskStatus, setTaskStatus] = useState<string>("all");

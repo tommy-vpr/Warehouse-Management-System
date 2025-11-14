@@ -12,7 +12,10 @@ import {
   Loader2,
 } from "lucide-react";
 
-function AssignOrdersToPacking() {
+function AssignOrdersToPacking(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const [orders, setOrders] = useState([]);
   const [staff, setStaff] = useState([]);
   const [selectedOrders, setSelectedOrders] = useState([]);

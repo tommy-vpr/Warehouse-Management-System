@@ -47,7 +47,10 @@ interface TransactionsResponse {
   };
 }
 
-export default function TransactionsPage() {
+export default function TransactionsPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const productId = searchParams.get("product");

@@ -43,7 +43,10 @@ interface TallyCount {
   [sku: string]: number;
 }
 
-export default function BlindCountReceivingPage() {
+export default function BlindCountReceivingPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();

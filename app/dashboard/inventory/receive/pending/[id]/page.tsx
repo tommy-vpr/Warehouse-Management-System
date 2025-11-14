@@ -60,7 +60,10 @@ interface ReceivingSession {
   lineItems: ReceivingLine[];
 }
 
-export default function PendingApprovalDetailsPage() {
+export default function PendingApprovalDetailsPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();

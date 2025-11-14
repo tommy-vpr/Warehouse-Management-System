@@ -51,7 +51,10 @@ interface QuickAction {
   variant?: "default" | "destructive" | "outline";
 }
 
-export default function PurchasingDashboard() {
+export default function PurchasingDashboard(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const router = useRouter();
 
   const { data: stats } = useQuery<PurchasingStats>({

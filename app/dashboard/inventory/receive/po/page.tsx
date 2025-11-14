@@ -55,7 +55,10 @@ interface POResponse {
   };
 }
 
-export default function POListPage() {
+export default function POListPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const router = useRouter();
   const { toast } = useToast();
   const [mounted, setMounted] = useState(false);

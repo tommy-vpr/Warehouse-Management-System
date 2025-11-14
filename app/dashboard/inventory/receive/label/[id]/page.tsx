@@ -8,7 +8,10 @@ import { Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import POBarcodeLabel from "@/components/inventory/POBarcodeLabel";
 
-export default function POBarcodeLabelPage() {
+export default function POBarcodeLabelPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const params = useParams();
   const router = useRouter();
   const barcodeId = params.id as string;

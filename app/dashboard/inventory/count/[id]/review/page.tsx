@@ -29,7 +29,10 @@ interface User {
   role: string;
 }
 
-export default function VarianceReviewPage() {
+export default function VarianceReviewPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();

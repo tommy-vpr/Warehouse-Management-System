@@ -39,7 +39,10 @@ interface PODetails {
   }>;
 }
 
-export default function PurchaseOrderDetail() {
+export default function PurchaseOrderDetail(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const poNumber = params.id;

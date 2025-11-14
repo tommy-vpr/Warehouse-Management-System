@@ -5,7 +5,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 
-export default function NotFound() {
+export default function NotFound(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-background text-center p-6">
       <Image

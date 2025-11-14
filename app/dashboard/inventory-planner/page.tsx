@@ -4,7 +4,10 @@ import { useRouter } from "next/navigation";
 import { TrendingUp, ShoppingCart, Package, AlertTriangle } from "lucide-react";
 import Image from "next/image";
 
-export default function InventoryPlannerDashboard() {
+export default function InventoryPlannerDashboard(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const router = useRouter();
 
   const cards = [

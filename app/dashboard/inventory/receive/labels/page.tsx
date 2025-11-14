@@ -46,7 +46,10 @@ interface BarcodesResponse {
   total: number;
 }
 
-export default function BarcodeLabelsListPage() {
+export default function BarcodeLabelsListPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const router = useRouter();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");

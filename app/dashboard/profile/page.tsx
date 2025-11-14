@@ -35,7 +35,10 @@ interface UserProfile {
   createdAt: string;
 }
 
-export default function ProfilePage() {
+export default function ProfilePage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const { data: session, update: updateSession } = useSession();
   const { toast } = useToast();
 

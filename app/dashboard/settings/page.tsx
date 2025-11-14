@@ -36,7 +36,10 @@ interface UpdatePasswordData {
   confirmPassword: string;
 }
 
-export default function UserSettingsPage() {
+export default function UserSettingsPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const { data: session, update: updateSession } = useSession();
 
   // Profile state

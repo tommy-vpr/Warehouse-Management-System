@@ -34,7 +34,10 @@ interface PurchaseOrder {
   currency?: string;
 }
 
-export default function InventoryReports() {
+export default function InventoryReports(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const [activeTab, setActiveTab] = useState<"forecast" | "po">("forecast");
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);

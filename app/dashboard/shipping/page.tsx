@@ -37,7 +37,10 @@ interface ShippedOrder {
   packageCount: number;
 }
 
-export default function ShippingDashboard() {
+export default function ShippingDashboard(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("all");

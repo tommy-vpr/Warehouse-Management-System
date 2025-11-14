@@ -61,7 +61,10 @@ interface TrackingInfo {
   totalWeight: number;
 }
 
-export default function TrackingPage() {
+export default function TrackingPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const params = useParams<{ id: string }>();
   const id = params.id;
 

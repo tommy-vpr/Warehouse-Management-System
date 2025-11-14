@@ -62,7 +62,10 @@ type StatusFilter =
   | "REFUND_PENDING"
   | "REFUNDED";
 
-export default function ReturnsDashboard() {
+export default function ReturnsDashboard(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const [metrics, setMetrics] = useState<ReturnMetrics | null>(null);
   const [returns, setReturns] = useState<ReturnOrder[]>([]);
   const [filteredReturns, setFilteredReturns] = useState<ReturnOrder[]>([]);

@@ -137,7 +137,10 @@ const usePickAction = () => {
   });
 };
 
-export default function MobilePickingInterface() {
+export default function MobilePickingInterface(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const { id } = useParams<{ id: string }>();
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
   const [showShortPickModal, setShowShortPickModal] = useState(false);

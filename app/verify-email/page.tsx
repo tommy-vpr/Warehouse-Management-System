@@ -9,7 +9,10 @@ import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
-export default function VerifyEmail() {
+export default function VerifyEmail(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const [status, setStatus] = useState<"loading" | "success" | "error">(
     "loading"
   );

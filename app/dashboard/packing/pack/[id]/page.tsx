@@ -103,7 +103,10 @@ const BOX_TYPES = [
   },
 ];
 
-export default function EnhancedPackingInterface() {
+export default function EnhancedPackingInterface(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const [packages, setPackages] = useState<any[]>([]);

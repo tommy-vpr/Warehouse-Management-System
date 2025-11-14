@@ -15,7 +15,10 @@ import {
   Clock,
 } from "lucide-react";
 
-export default function ReceivingPage() {
+export default function ReceivingPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const router = useRouter();
 
   // Get pending approvals count

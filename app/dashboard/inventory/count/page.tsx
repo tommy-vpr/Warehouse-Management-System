@@ -124,7 +124,10 @@ const fetchCampaigns = async ({
   };
 };
 
-export default function CycleCountDashboard() {
+export default function CycleCountDashboard(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();

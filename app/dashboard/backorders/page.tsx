@@ -9,7 +9,10 @@ import { BackOrderShippingManager } from "@/components/backorders/BackOrderShipp
 // import { BackOrderAllocationManager } from "@/components/backorders/BackOrderAllocationManager";
 import BackOrderAllocationManager from "@/components/backorders/BackOrderAllocationManager";
 
-export default function BackOrdersPage() {
+export default function BackOrdersPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   return (
     <div className="container mx-auto p-2">
       <h1 className="text-3xl font-bold mb-6">Back Order Management</h1>

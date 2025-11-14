@@ -2,7 +2,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
-export default function PODetail() {
+export default function PODetail(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const { id } = useParams();
   const [po, setPo] = useState<any>(null);
 

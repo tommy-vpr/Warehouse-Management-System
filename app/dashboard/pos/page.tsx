@@ -2,7 +2,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-export default function POList() {
+export default function POList(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const [orders, setOrders] = useState<any[]>([]);
 
   useEffect(() => {

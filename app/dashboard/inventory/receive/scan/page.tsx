@@ -50,7 +50,10 @@ interface TallyCount {
   [sku: string]: number;
 }
 
-export default function BarcodeScanReceivingPage() {
+export default function BarcodeScanReceivingPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { toast } = useToast();

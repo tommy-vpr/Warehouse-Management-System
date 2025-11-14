@@ -66,7 +66,10 @@ interface CampaignResults {
   }>;
 }
 
-export default function CampaignResults() {
+export default function CampaignResults(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const campaignId = params.id;

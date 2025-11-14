@@ -65,7 +65,10 @@ interface TransferDetails {
   };
 }
 
-export default function TransferDetailsPage() {
+export default function TransferDetailsPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();

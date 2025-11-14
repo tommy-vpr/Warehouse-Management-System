@@ -14,7 +14,10 @@ import {
   Copy,
 } from "lucide-react";
 
-export default function TestReserve() {
+export default function TestReserve(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const { data: session, status } = useSession();
   const [orderId, setOrderId] = useState("");
 

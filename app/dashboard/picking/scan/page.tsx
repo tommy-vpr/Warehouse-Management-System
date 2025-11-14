@@ -49,7 +49,10 @@ interface LocationData {
   inventory: InventoryItem[];
 }
 
-export default function PickingScanPage() {
+export default function PickingScanPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [locationData, setLocationData] = useState<LocationData | null>(null);
   const [loading, setLoading] = useState(false);

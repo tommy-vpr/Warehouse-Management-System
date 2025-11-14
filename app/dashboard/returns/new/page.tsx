@@ -20,7 +20,10 @@ type ReturnLabel = {
   carrier: string;
 };
 
-export default function NewReturnPage() {
+export default function NewReturnPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const [step, setStep] = useState<
     "lookup" | "select-items" | "confirm" | "complete"
   >("lookup");

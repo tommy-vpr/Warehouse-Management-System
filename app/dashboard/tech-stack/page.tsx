@@ -18,7 +18,10 @@ import {
   Area,
 } from "recharts";
 
-const WMSCostBreakdown = () => {
+const WMSCostBreakdown = (props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) => {
   const [activeTab, setActiveTab] = useState("overview");
   const [userCount, setUserCount] = useState(1);
   const [orderVolume, setOrderVolume] = useState(400);

@@ -69,7 +69,10 @@ const fetchActivities = async ({
   return data;
 };
 
-export default function ActivityPage() {
+export default function ActivityPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(

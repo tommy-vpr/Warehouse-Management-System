@@ -65,7 +65,10 @@ interface PendingResponse {
   userRole: string;
 }
 
-export default function PendingApprovalsListPage() {
+export default function PendingApprovalsListPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const router = useRouter();
   const { data: session } = useSession();
   const [searchTerm, setSearchTerm] = useState("");

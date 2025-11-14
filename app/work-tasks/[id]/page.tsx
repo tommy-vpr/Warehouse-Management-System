@@ -15,7 +15,10 @@ import {
   PlayCircle,
 } from "lucide-react";
 
-export default function WorkTaskDetailPage() {
+export default function WorkTaskDetailPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const params = useParams();
   const taskId = params.id as string;
   const queryClient = useQueryClient();

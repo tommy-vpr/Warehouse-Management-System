@@ -31,7 +31,10 @@ interface ReorderRequest {
   hasBeenOrdered: boolean;
 }
 
-export default function ReorderReviewPage() {
+export default function ReorderReviewPage(props: {
+  params: Promise<{}>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const [showProcessed, setShowProcessed] = useState(false);
 
   const router = useRouter();
