@@ -4,13 +4,15 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string; itemId: string } }
+  { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
   const body = await req.json();
   const { quantityPicked, userId, scannedCode, notes } = body;
 
+  const { id, itemId } = await params;
+
   const item = await prisma.pickListItem.findUnique({
-    where: { id: params.itemId },
+    where: { id: itemId },
     include: { productVariant: true, location: true },
   });
 
@@ -42,7 +44,7 @@ export async function POST(
     newQuantityPicked < item.quantityToPick && quantityPicked > 0;
 
   const updatedItem = await prisma.pickListItem.update({
-    where: { id: params.itemId },
+    where: { id: itemId },
     data: {
       quantityPicked: newQuantityPicked,
       status: isComplete ? "PICKED" : isShortPick ? "SHORT_PICK" : "PENDING",
@@ -54,7 +56,7 @@ export async function POST(
 
   // Update pick list progress
   const pickList = await prisma.pickList.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: { items: true },
   });
 
@@ -63,7 +65,7 @@ export async function POST(
   ).length;
 
   await prisma.pickList.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       pickedItems: totalPicked,
       status:
@@ -74,8 +76,8 @@ export async function POST(
   // Create pick event
   await prisma.pickEvent.create({
     data: {
-      pickListId: params.id,
-      itemId: params.itemId,
+      pickListId: id,
+      itemId: itemId,
       eventType: isShortPick ? "ITEM_SHORT_PICKED" : "ITEM_PICKED",
       userId,
       scannedCode,
@@ -108,6 +110,6 @@ export async function POST(
     item: updatedItem,
     isComplete,
     isShortPick,
-    pickList: { id: params.id, pickedItems: totalPicked },
+    pickList: { id, pickedItems: totalPicked },
   });
 }
