@@ -5,6 +5,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Loader2, Package } from "lucide-react";
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import Barcode from "react-barcode";
 
@@ -27,11 +28,11 @@ interface ReturnOrder {
   }>;
 }
 
-export default function PackingSlipPage({
-  params,
-}: {
-  params: { rmaNumber: string };
+export default function PackingSlipPage(props: {
+  params: Promise<{ rmaNumber: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  const params = useParams<{ rmaNumber: string }>(); // ← Use the hook
   const [returnOrder, setReturnOrder] = useState<ReturnOrder | null>(null);
   const [loading, setLoading] = useState(true);
 
