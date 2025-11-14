@@ -37,6 +37,7 @@ import clsx from "clsx";
 import GlobalSearch from "@/components/GlobalSearch";
 import NotificationBell from "@/components/notification/NotificationBell";
 import { useQuery } from "@tanstack/react-query";
+import { Suspense } from "react";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -214,7 +215,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
       {/* Main content - with proper margins for fixed header and sidebar */}
       <main className="pt-[90px] sm:pl-80 p-0 sm:p-6 sm:pt-16 pb-20 sm:pb-6 min-h-screen">
-        {children}
+        <Suspense fallback={<div className="p-4">Loading view...</div>}>
+          {children}
+        </Suspense>
       </main>
 
       {/* Mobile footer */}
