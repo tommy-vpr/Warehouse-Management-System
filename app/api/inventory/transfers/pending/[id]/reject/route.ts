@@ -6,7 +6,7 @@ import { notifyUser } from "@/lib/ably-server";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -25,12 +25,12 @@ export async function POST(
     }
 
     const { notes } = await request.json();
-    const transferId = params.id;
+    const { id } = await params;
 
     const result = await prisma.$transaction(async (tx) => {
       const transfer = await tx.inventoryTransaction.findUnique({
         where: {
-          id: transferId,
+          id,
           referenceType: "TRANSFER_PENDING",
         },
       });
@@ -51,7 +51,7 @@ export async function POST(
 
       // Update transfer status
       const updatedTransfer = await tx.inventoryTransaction.update({
-        where: { id: transferId },
+        where: { id },
         data: {
           referenceType: "TRANSFER_REJECTED",
           notes: `REJECTED: ${notes || "Transfer rejected"}`,
@@ -71,7 +71,7 @@ export async function POST(
         title: "Transfer Rejected",
         message: `Your transfer of ${metadata.quantity} ${metadata.productName} has been rejected`,
         // link: `/dashboard/inventory/product/${transfer.productVariantId}`,
-        link: `/dashboard/inventory/transfers/${transferId}`,
+        link: `/dashboard/inventory/transfers/${id}`,
         timestamp: new Date().toISOString(),
       });
 
@@ -86,7 +86,7 @@ export async function POST(
             metadata.toLocationName
           } has been rejected${notes ? `: ${notes}` : ""}`,
           // link: `/dashboard/inventory/product/${transfer.productVariantId}`,
-          link: `/dashboard/inventory/transfers/${transferId}`,
+          link: `/dashboard/inventory/transfers/${id}`,
         },
       });
 

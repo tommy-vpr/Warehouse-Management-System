@@ -6,7 +6,7 @@ import { notifyUser } from "@/lib/ably-server";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -25,13 +25,13 @@ export async function POST(
     }
 
     const { notes } = await request.json();
-    const transferId = params.id;
+    const { id } = await params;
 
     const result = await prisma.$transaction(async (tx) => {
       // Get pending transfer
       const transfer = await tx.inventoryTransaction.findUnique({
         where: {
-          id: transferId,
+          id,
           referenceType: "TRANSFER_PENDING",
         },
         include: {
@@ -94,7 +94,7 @@ export async function POST(
 
       // Update transfer status
       const updatedTransfer = await tx.inventoryTransaction.update({
-        where: { id: transferId },
+        where: { id },
         data: {
           quantityChange: quantity,
           referenceType: "TRANSFER_APPROVED",
@@ -117,7 +117,7 @@ export async function POST(
           quantityChange: -quantity,
           locationId: metadata.fromLocationId,
           referenceType: "TRANSFER_OUT",
-          referenceId: transferId,
+          referenceId: id,
           userId: session.user.id,
           notes: `Transfer to ${metadata.toLocationName}`,
         },
@@ -130,7 +130,7 @@ export async function POST(
           quantityChange: quantity,
           locationId: metadata.toLocationId,
           referenceType: "TRANSFER_IN",
-          referenceId: transferId,
+          referenceId: id,
           userId: session.user.id,
           notes: `Transfer from ${metadata.fromLocationName}`,
         },
@@ -142,7 +142,7 @@ export async function POST(
         title: "Transfer Approved",
         message: `Your transfer of ${quantity} ${metadata.productName} has been approved`,
         // link: `/dashboard/inventory/product/${transfer.productVariantId}`,
-        link: `/dashboard/inventory/transfers/${transferId}`,
+        link: `/dashboard/inventory/transfers/${id}`,
         timestamp: new Date().toISOString(),
       });
 
@@ -153,7 +153,7 @@ export async function POST(
           title: "Transfer Approved",
           message: `Your transfer of ${quantity} ${metadata.productName} from ${metadata.fromLocationName} to ${metadata.toLocationName} has been approved`,
           // link: `/dashboard/inventory/product/${transfer.productVariantId}`,
-          link: `/dashboard/inventory/transfers/${transferId}`,
+          link: `/dashboard/inventory/transfers/${id}`,
         },
       });
 

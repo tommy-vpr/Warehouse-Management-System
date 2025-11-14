@@ -2,10 +2,11 @@ import { PDFDocument } from "pdf-lib";
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const res = await fetch(
-    `${process.env.BASE_URL}/api/shipping/tracking/${params.id}`
+    `${process.env.BASE_URL}/api/shipping/tracking/${id}`
   );
 
   if (!res.ok) {

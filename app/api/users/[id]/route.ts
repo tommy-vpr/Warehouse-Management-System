@@ -78,14 +78,15 @@ export async function GET(
  */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const body = await req.json();
   const { name, email, role, image } = body;
+  const { id } = await params;
 
   try {
     const user = await prisma.user.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(name && { name }),
         ...(email && { email }),
@@ -118,12 +119,13 @@ export async function PATCH(
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // Check if user has active work
     const user = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         assignedPickLists: {
           where: {
@@ -150,7 +152,7 @@ export async function DELETE(
     }
 
     await prisma.user.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({

@@ -150,7 +150,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -159,7 +159,7 @@ export async function PATCH(
     }
 
     const { status } = await request.json();
-    const campaignId = params.id;
+    const { id } = await params;
 
     // Validate status
     const validStatuses = [
@@ -175,7 +175,7 @@ export async function PATCH(
 
     // Update campaign status
     const updatedCampaign = await prisma.cycleCountCampaign.update({
-      where: { id: campaignId },
+      where: { id },
       data: {
         status,
         ...(status === "COMPLETED" ? { endDate: new Date() } : {}),
@@ -215,7 +215,7 @@ function calculateAverageTaskTime(tasks: any[]) {
 // DELETE /api/inventory/cycle-counts/campaigns/[id]
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -223,8 +223,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { id } = await params;
+
     const campaign = await prisma.cycleCountCampaign.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     // Check if campaign exists
@@ -244,7 +246,7 @@ export async function DELETE(
     }
 
     await prisma.cycleCountCampaign.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ success: true });

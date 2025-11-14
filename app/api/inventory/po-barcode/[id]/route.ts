@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -16,11 +16,11 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const barcodeId = params.id;
+    const { id } = await params;
 
     // ✅ CRITICAL: Include lastPrintedByUser relation
     const barcode = await prisma.pOBarcode.findUnique({
-      where: { id: barcodeId },
+      where: { id },
       include: {
         lastPrintedByUser: {
           // ✅ This joins with User table

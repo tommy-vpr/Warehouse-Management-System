@@ -40,13 +40,15 @@ export async function GET(
 // PATCH /api/pick-lists/[id] - Update pick list
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const body = await req.json();
   const { status, assignedTo, notes } = body;
 
+  const { id } = await params;
+
   const pickList = await prisma.pickList.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       ...(status && { status }),
       ...(assignedTo && { assignedTo }),

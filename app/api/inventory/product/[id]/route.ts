@@ -7,7 +7,7 @@ import { Warehouse } from "lucide-react";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -15,11 +15,11 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const productVariantId = params.id;
+    const { id } = await params;
 
     // Get product variant with all related data
     const productVariant = await prisma.productVariant.findUnique({
-      where: { id: productVariantId },
+      where: { id },
       include: {
         product: true,
         inventory: {
@@ -177,7 +177,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -185,12 +185,12 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const productVariantId = params.id;
+    const { id } = await params;
     const updates = await request.json();
 
     // Update the product variant
     const updatedVariant = await prisma.productVariant.update({
-      where: { id: productVariantId },
+      where: { id },
       data: {
         name: updates.name,
         upc: updates.upc,
@@ -215,7 +215,7 @@ export async function PATCH(
       updates.maxQuantity !== undefined
     ) {
       await prisma.inventory.updateMany({
-        where: { productVariantId },
+        where: { productVariantId: id },
         data: {
           ...(updates.reorderPoint !== undefined && {
             reorderPoint: updates.reorderPoint,
