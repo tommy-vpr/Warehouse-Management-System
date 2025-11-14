@@ -64,7 +64,7 @@ export async function GET(request: Request) {
     const pendingSessions = await prisma.receivingSession.findMany({
       where: {
         poId: { in: poIds },
-        approvalStatus: "PENDING",
+        status: "PENDING",
       },
       select: { poId: true },
     });
