@@ -4,12 +4,13 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ poId: string }> } // ← Changed to poId
 ) {
-  const { id } = await params;
+  const { poId } = await params; // ← Changed to poId
+
   const session = await prisma.receivingSession.findFirst({
     where: {
-      poId: id,
+      poId: poId, // ← Using poId
       status: "PENDING",
     },
     include: {
