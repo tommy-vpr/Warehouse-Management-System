@@ -78,7 +78,7 @@ export default function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <div className="flex items-center space-x-2 cursor-pointer ring-3 ring-gray-300 dark:ring-zinc-600 rounded-full">
+        <div className="flex items-center space-x-2 cursor-pointer ring-3 ring-gray-300 dark:ring-zinc-600 hover:ring-gray-400 dark:hover:ring-zinc-500 rounded-full transition-all">
           {/* Avatar with image or initials */}
           <Avatar className="h-8 w-8 hover:opacity-85 transition">
             <AvatarImage

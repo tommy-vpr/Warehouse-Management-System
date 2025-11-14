@@ -11,7 +11,7 @@ export async function sendVerificationEmail(
   try {
     await resend.emails.send({
       // from: process.env.EMAIL_FROM!,
-      from: "HQ Warehouse <onboarding@resend.dev>",
+      from: "HQ Warehouse <no-reply@emails.teevong.com>",
       to: email,
       subject: "Verify your email address",
       html: `
