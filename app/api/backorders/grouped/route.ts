@@ -135,8 +135,8 @@ export async function GET(request: NextRequest) {
 
       // For shipping - calculate package weight/dimensions (in ounces)
       const totalWeight = backOrdersWithAvailability.reduce((sum, bo) => {
-        const weightInGrams = bo.weight || 0;
-        const weightInOz = weightInGrams / 28.3495; // Convert to ounces
+        const weightInGrams = bo.weight ? bo.weight.toNumber() : 0;
+        const weightInOz = weightInGrams / 28.3495;
         return sum + weightInOz * bo.quantityBackOrdered;
       }, 0);
 
