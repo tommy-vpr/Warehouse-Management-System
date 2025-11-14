@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,7 @@ import { useParams } from "next/navigation";
 import ShippingLabelForm from "@/components/shipping/ShippingLabelForm";
 import OrderImageUploader from "@/components/order/OrderImageUploader";
 import { useQueryClient } from "@tanstack/react-query";
+import Ably from "ably";
 
 interface OrderItem {
   id: string;
@@ -147,6 +148,109 @@ export default function EnhancedPackingInterface(props: {
   const isPackingComplete = order?.status === "SHIPPED";
 
   const [verifyingItemId, setVerifyingItemId] = useState<string | null>(null);
+
+  // ✅ NEW: State for tracking packing slip polling
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(
+    null
+  );
+  const [packingSlipsGenerating, setPackingSlipsGenerating] = useState(false);
+
+  // ✅ NEW: Ably connection for real-time updates
+  useEffect(() => {
+    if (!order?.id) return;
+
+    const ably = new Ably.Realtime({
+      authUrl: "/api/ably/auth",
+    });
+
+    const channel = ably.channels.get(`order:${order.id}`);
+
+    channel.subscribe("update", (message) => {
+      console.log("📥 Received order update:", message.data);
+
+      if (message.data.type === "packing_slips_ready") {
+        console.log("✅ Packing slips ready!");
+
+        // Refresh packages to get updated packing slip URLs
+        refreshPackages();
+      }
+    });
+
+    return () => {
+      channel.unsubscribe();
+      ably.close();
+    };
+  }, [order?.id]);
+
+  // ✅ NEW: Function to refresh packages
+  const refreshPackages = useCallback(async () => {
+    if (!order?.id) return;
+
+    try {
+      const response = await fetch(`/api/orders/${order.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log("🔄 Refreshed packages:", data.shippingPackages);
+        setPackages(data.shippingPackages || []);
+
+        // Stop polling if all packing slips are ready
+        const allReady = data.shippingPackages?.every(
+          (pkg: any) => pkg.packingSlipUrl
+        );
+        if (allReady && pollingInterval) {
+          clearInterval(pollingInterval);
+          setPollingInterval(null);
+          setPackingSlipsGenerating(false);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to refresh packages:", error);
+    }
+  }, [order?.id, pollingInterval]);
+
+  // ✅ NEW: Start polling for packing slips (fallback if Ably fails)
+  const startPackingSlipPolling = useCallback(() => {
+    if (pollingInterval) return; // Already polling
+
+    console.log("🔄 Starting packing slip polling...");
+    setPackingSlipsGenerating(true);
+
+    const interval = setInterval(() => {
+      refreshPackages();
+    }, 3000); // Poll every 3 seconds
+
+    setPollingInterval(interval);
+
+    // Stop polling after 2 minutes (safety timeout)
+    setTimeout(() => {
+      if (interval) {
+        clearInterval(interval);
+        setPollingInterval(null);
+        setPackingSlipsGenerating(false);
+        console.log("⏱️ Packing slip polling timed out");
+      }
+    }, 120000);
+  }, [pollingInterval, refreshPackages]);
+
+  // ✅ NEW: Check if packing slips are generating when packages load
+  useEffect(() => {
+    if (packages.length > 0 && isPackingComplete) {
+      const anyMissing = packages.some((pkg) => !pkg.packingSlipUrl);
+
+      if (anyMissing && !pollingInterval) {
+        startPackingSlipPolling();
+      }
+    }
+  }, [packages, isPackingComplete]);
+
+  // ✅ MODIFIED: Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [pollingInterval]);
 
   useEffect(() => {
     loadOrderDetails();
@@ -382,6 +486,9 @@ export default function EnhancedPackingInterface(props: {
       const data = await response.json();
       setOrder(data); // ← This will update isPackingComplete automatically
       setPackages(data.shippingPackages || []);
+
+      // ✅ Start polling for packing slips
+      startPackingSlipPolling();
     } catch (error) {
       console.error(error);
     }
@@ -457,6 +564,18 @@ export default function EnhancedPackingInterface(props: {
             </Badge>{" "}
             is ready for shipping
           </p>
+
+          {/* ✅ NEW: Show status if packing slips are still generating */}
+          {packingSlipsGenerating && (
+            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                <p className="text-sm text-blue-800 dark:text-blue-300">
+                  Generating...
+                </p>
+              </div>
+            </div>
+          )}
 
           {packages.length > 0 ? (
             <Card className="mb-4 sm:mb-6">
@@ -539,8 +658,13 @@ export default function EnhancedPackingInterface(props: {
                             size="sm"
                             variant="outline"
                             disabled
-                            className="w-full sm:w-auto"
+                            className="w-full sm:w-auto cursor-wait"
+                            onClick={() => {
+                              // ✅ Manual refresh trigger
+                              refreshPackages();
+                            }}
                           >
+                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                             Generating...
                           </Button>
                         )}
@@ -598,7 +722,10 @@ export default function EnhancedPackingInterface(props: {
                       }
                     }}
                   >
-                    <Printer /> Print All Documents ({packages.length * 2})
+                    <Printer />
+                    {packages.some((pkg) => !pkg.packingSlipUrl)
+                      ? "Waiting for packing slips..."
+                      : `Print All Documents (${packages.length * 2})`}
                   </Button>
                 </div>
               </CardContent>
@@ -783,8 +910,8 @@ export default function EnhancedPackingInterface(props: {
                         currentStep === step.number
                           ? "bg-gray-400 dark:bg-zinc-700 text-white"
                           : step.completed
-                          ? "bg-green-600 text-white"
-                          : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
+                            ? "bg-green-600 text-white"
+                            : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
                       }`}
                     >
                       {step.completed ? (
@@ -896,8 +1023,8 @@ export default function EnhancedPackingInterface(props: {
                           isVerifying
                             ? "opacity-50 cursor-wait border-2 border-blue-400" // ✅ Blue border while loading
                             : currentStep >= 1
-                            ? "cursor-pointer"
-                            : ""
+                              ? "cursor-pointer"
+                              : ""
                         } ${
                           isVerified
                             ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 border"
