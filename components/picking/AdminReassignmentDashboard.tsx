@@ -325,10 +325,10 @@ function StaffWorkloadRow({ staff, onSelectStaff }: StaffWorkloadRowProps) {
                 workloadLevel.color === "gray"
                   ? "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
                   : workloadLevel.color === "green"
-                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                  : workloadLevel.color === "yellow"
-                  ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                  : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                    : workloadLevel.color === "yellow"
+                      ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
               }
             `}
           >
@@ -474,10 +474,10 @@ function StaffWorkloadCard({ staff, onSelectStaff }: StaffWorkloadCardProps) {
             workloadLevel.color === "gray"
               ? "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
               : workloadLevel.color === "green"
-              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-              : workloadLevel.color === "yellow"
-              ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-              : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                : workloadLevel.color === "yellow"
+                  ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                  : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
           }`}
         >
           {workloadLevel.label}
@@ -796,9 +796,11 @@ function BulkReassignmentModal({
             disabled={!targetStaffId || selectedLists.length === 0 || loading}
             className="flex-1 px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition disabled:opacity-50"
           >
-            {loading
-              ? "Reassigning..."
-              : `Reassign ${selectedLists.length} List(s)`}
+            {loading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              `Reassign ${selectedLists.length} List(s)`
+            )}
           </button>
         </div>
       </div>

@@ -20,7 +20,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Users } from "lucide-react";
+import { AlertCircle, Loader2, Users } from "lucide-react";
 import type { ReassignmentReason } from "@/types/audit-trail";
 
 interface User {
@@ -224,7 +224,11 @@ export default function ReassignPickListDialog({
             }
             className="flex-1"
           >
-            {loading ? "Reassigning..." : "Reassign Pick List"}
+            {loading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              "Reassign Pick List"
+            )}
           </Button>
           <Button variant="outline" onClick={handleCancel} disabled={loading}>
             Cancel

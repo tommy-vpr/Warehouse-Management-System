@@ -488,7 +488,6 @@ function BulkReassignmentModal({
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [reason, setReason] = useState<ReassignmentReason>("WORKLOAD_BALANCE");
   const [notes, setNotes] = useState("");
-  const [strategy, setStrategy] = useState("split");
   const [loading, setLoading] = useState(false);
 
   const toggleTask = (taskId: string) => {
@@ -517,7 +516,6 @@ function BulkReassignmentModal({
           toUserId: targetStaffId,
           reason,
           notes: notes.trim() || undefined,
-          strategy,
         }),
       });
 
@@ -602,51 +600,6 @@ function BulkReassignmentModal({
                 </option>
               ))}
             </select>
-          </div>
-
-          {/* Strategy Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Reassignment Strategy
-            </label>
-            <div className="space-y-3">
-              <label className="flex items-center gap-3 p-3 border border-gray-300 dark:border-zinc-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-700">
-                <input
-                  type="radio"
-                  name="strategy"
-                  value="split"
-                  checked={strategy === "split"}
-                  onChange={(e) => setStrategy(e.target.value)}
-                  className="w-4 h-4"
-                />
-                <div>
-                  <div className="font-medium text-gray-900 dark:text-gray-100">
-                    Smart Split & Reassign
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Create new tasks for unpacked orders
-                  </div>
-                </div>
-              </label>
-              <label className="flex items-center gap-3 p-3 border border-gray-300 dark:border-zinc-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-700">
-                <input
-                  type="radio"
-                  name="strategy"
-                  value="simple"
-                  checked={strategy === "simple"}
-                  onChange={(e) => setStrategy(e.target.value)}
-                  className="w-4 h-4"
-                />
-                <div>
-                  <div className="font-medium text-gray-900 dark:text-gray-100">
-                    Simple Reassignment
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Keep existing tasks, just change assignee
-                  </div>
-                </div>
-              </label>
-            </div>
           </div>
 
           {/* Notes */}
@@ -751,9 +704,11 @@ function BulkReassignmentModal({
             disabled={!targetStaffId || selectedTasks.length === 0 || loading}
             className="flex-1 px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition disabled:opacity-50"
           >
-            {loading
-              ? "Reassigning..."
-              : `Reassign ${selectedTasks.length} Task(s)`}
+            {loading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              `Reassign ${selectedTasks.length} Task(s)`
+            )}
           </button>
         </div>
       </div>

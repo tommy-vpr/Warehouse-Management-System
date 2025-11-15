@@ -1,13 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { keepPreviousData } from "@tanstack/react-query";
-import { Loader2, Package } from "lucide-react";
+import { Loader2, Package, UserCog } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ReassignPackingTaskModal } from "@/components/packing/Reassignpacktaskmodal";
 
 interface PackingTask {
   id: string;
@@ -52,7 +54,29 @@ export default function PackingTasksDashboard(props: {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const itemsPerPage = 20;
 
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+  const [showReassignModal, setShowReassignModal] = useState(false);
+  const [staff, setStaff] = useState<any[]>([]);
+
   const router = useRouter();
+
+  useEffect(() => {
+    loadStaff();
+  }, []);
+
+  const loadStaff = async () => {
+    try {
+      const response = await fetch(
+        "/api/users?role=STAFF&includeWorkload=true"
+      );
+      if (response.ok) {
+        const staffData = await response.json();
+        setStaff(staffData);
+      }
+    } catch (error) {
+      console.error("Error loading staff:", error);
+    }
+  };
 
   // Fetch packing tasks with TanStack Query
   const { data, isLoading, isFetching, isError } =
@@ -106,6 +130,35 @@ export default function PackingTasksDashboard(props: {
     return "Normal";
   };
 
+  // Checkbox handler functions
+  const toggleTask = (taskId: string) => {
+    setSelectedTaskIds((prev) =>
+      prev.includes(taskId)
+        ? prev.filter((id) => id !== taskId)
+        : [...prev, taskId]
+    );
+  };
+
+  const toggleAllTasks = () => {
+    if (selectedTaskIds.length === tasks.length) {
+      setSelectedTaskIds([]);
+    } else {
+      setSelectedTaskIds(tasks.map((task) => task.id));
+    }
+  };
+
+  const handleReassignClick = () => {
+    if (selectedTaskIds.length === 0) {
+      alert("Please select at least one packing task");
+      return;
+    }
+    setShowReassignModal(true);
+  };
+
+  const selectedTasksData = tasks.filter((task) =>
+    selectedTaskIds.includes(task.id)
+  );
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -118,10 +171,23 @@ export default function PackingTasksDashboard(props: {
     <div className="space-y-6 p-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Packing Tasks</span>
-            {isFiltering && <Loader2 className="w-5 h-5 animate-spin" />}
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CardTitle>Packing Tasks</CardTitle>
+              {isFiltering && <Loader2 className="w-5 h-5 animate-spin" />}
+            </div>
+
+            {/* Reassign Button - Shows when tasks are selected */}
+            {selectedTaskIds.length > 0 && (
+              <Button
+                onClick={handleReassignClick}
+                className="flex items-center gap-2"
+              >
+                <UserCog className="w-4 h-4" />
+                Reassign ({selectedTaskIds.length})
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {/* Filter Buttons */}
@@ -173,6 +239,15 @@ export default function PackingTasksDashboard(props: {
             <table className="w-full">
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
+                  <th className="px-4 py-3 text-left">
+                    <Checkbox
+                      checked={
+                        selectedTaskIds.length === tasks.length &&
+                        tasks.length > 0
+                      }
+                      onCheckedChange={toggleAllTasks}
+                    />
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Task Number
                   </th>
@@ -208,6 +283,13 @@ export default function PackingTasksDashboard(props: {
                     }
                     className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
                   >
+                    <td className="px-4 py-4">
+                      <Checkbox
+                        checked={selectedTaskIds.includes(task.id)}
+                        onCheckedChange={() => toggleTask(task.id)}
+                        onClick={(e) => e.stopPropagation()} // Prevent row click
+                      />
+                    </td>
                     <td className="px-4 py-4">
                       <div className="font-medium">{task.taskNumber}</div>
                     </td>
@@ -287,7 +369,7 @@ export default function PackingTasksDashboard(props: {
       </Card>
 
       {/* Pagination Controls */}
-      {true && (
+      {totalPages > 1 && (
         <div className="flex items-center justify-between py-3">
           <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
             Showing page {currentPage} of {totalPages}
@@ -307,8 +389,8 @@ export default function PackingTasksDashboard(props: {
                   currentPage <= 3
                     ? i + 1
                     : currentPage >= totalPages - 2
-                    ? totalPages - 4 + i
-                    : currentPage - 2 + i;
+                      ? totalPages - 4 + i
+                      : currentPage - 2 + i;
 
                 if (pageNum < 1 || pageNum > totalPages) return null;
 
@@ -338,6 +420,18 @@ export default function PackingTasksDashboard(props: {
             </Button>
           </div>
         </div>
+      )}
+
+      {showReassignModal && (
+        <ReassignPackingTaskModal
+          open={showReassignModal}
+          onClose={() => {
+            setShowReassignModal(false);
+            setSelectedTaskIds([]); // Clear selection after closing
+          }}
+          selectedTasks={selectedTasksData}
+          staff={staff}
+        />
       )}
     </div>
   );

@@ -60,12 +60,7 @@ export async function POST(
 
     const { id: taskId } = await params;
     const body = await req.json();
-    const {
-      newStaffId,
-      strategy = "split",
-      reason = "OTHER" as ReassignmentReason,
-      notes,
-    } = body;
+    const { newStaffId, reason = "OTHER" as ReassignmentReason, notes } = body;
 
     if (!newStaffId) {
       return NextResponse.json(
@@ -107,6 +102,14 @@ export async function POST(
       );
     }
 
+    // Check if task is already completed
+    if (task.status === "COMPLETED" || task.status === "CANCELLED") {
+      return NextResponse.json(
+        { error: `Cannot reassign ${task.status.toLowerCase()} task` },
+        { status: 400 }
+      );
+    }
+
     // Get new assignee
     const newUser = await prisma.user.findUnique({
       where: { id: newStaffId },
@@ -117,51 +120,16 @@ export async function POST(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Check for partial completion
-    const completedItems = task.taskItems.filter(
-      (item) => item.status === "COMPLETED"
+    // Perform simple reassignment
+    const result = await simpleReassignment(
+      task,
+      newStaffId,
+      newUser,
+      session.user.id,
+      managerName,
+      reason,
+      notes
     );
-    const inProgressItems = task.taskItems.filter(
-      (item) => item.status === "IN_PROGRESS"
-    );
-    const pendingItems = task.taskItems.filter(
-      (item) => item.status === "PENDING"
-    );
-
-    if (completedItems.length === task.taskItems.length) {
-      return NextResponse.json(
-        { error: "Nothing to reassign - task is complete" },
-        { status: 400 }
-      );
-    }
-
-    let result;
-
-    if (strategy === "split" && completedItems.length > 0) {
-      // Strategy 1: Create new task for remainder
-      result = await createContinuationTask(
-        task,
-        inProgressItems,
-        pendingItems,
-        newStaffId,
-        newUser,
-        session.user.id,
-        managerName,
-        reason,
-        notes
-      );
-    } else {
-      // Strategy 2: Simple reassignment
-      result = await simpleReassignment(
-        task,
-        newStaffId,
-        newUser,
-        session.user.id,
-        managerName,
-        reason,
-        notes
-      );
-    }
 
     return NextResponse.json(result);
   } catch (error) {
@@ -174,187 +142,6 @@ export async function POST(
       { status: 500 }
     );
   }
-}
-
-async function createContinuationTask(
-  originalTask: PackingTask,
-  inProgressItems: PackingTask["taskItems"],
-  pendingItems: PackingTask["taskItems"],
-  newStaffId: string,
-  newUser: { id: string; name: string | null; email: string | null },
-  managerId: string,
-  managerName: string,
-  reason: ReassignmentReason,
-  notes?: string
-) {
-  return await prisma.$transaction(async (tx) => {
-    const remainingWork = [];
-
-    // Handle in-progress items (reset them)
-    for (const item of inProgressItems) {
-      remainingWork.push({
-        orderId: item.orderId,
-        quantityRequired: item.quantityRequired,
-        sequence: item.sequence,
-        notes: `Continuation from ${originalTask.taskNumber}`,
-      });
-
-      // Mark as completed in original
-      await tx.taskItem.update({
-        where: { id: item.id },
-        data: {
-          status: "COMPLETED",
-        },
-      });
-    }
-
-    // Add pending items
-    for (const item of pendingItems) {
-      remainingWork.push({
-        orderId: item.orderId,
-        quantityRequired: item.quantityRequired,
-        sequence: item.sequence,
-        notes: `Moved from ${originalTask.taskNumber}`,
-      });
-
-      // Mark as completed in original (they're moving)
-      await tx.taskItem.update({
-        where: { id: item.id },
-        data: {
-          status: "COMPLETED",
-        },
-      });
-    }
-
-    // Create continuation task
-    const continuationTask = await tx.workTask.create({
-      data: {
-        taskNumber: `${originalTask.taskNumber}-CONT`,
-        type: "PACKING",
-        assignedTo: newStaffId,
-        status: "ASSIGNED",
-        priority: originalTask.priority + 1,
-        orderIds: remainingWork.map((item) => item.orderId),
-        totalOrders: remainingWork.length,
-        totalItems: remainingWork.reduce(
-          (sum, item) => sum + item.quantityRequired,
-          0
-        ),
-        notes: `Continuation of ${originalTask.taskNumber}`,
-        taskItems: {
-          create: remainingWork,
-        },
-      },
-      include: {
-        taskItems: {
-          include: {
-            order: true,
-          },
-        },
-        assignedUser: {
-          select: { id: true, name: true, email: true },
-        },
-      },
-    });
-
-    // Mark original as partially completed
-    await tx.workTask.update({
-      where: { id: originalTask.id },
-      data: {
-        status: "PARTIALLY_COMPLETED",
-        completedAt: new Date(),
-        notes: `Partially completed - continued in ${continuationTask.taskNumber}`,
-      },
-    });
-
-    // Update orders for continuation
-    await tx.order.updateMany({
-      where: { id: { in: remainingWork.map((item) => item.orderId) } },
-      data: {
-        packingAssignedTo: newStaffId,
-        packingAssignedAt: new Date(),
-      },
-    });
-
-    // Create task event for split
-    await tx.taskEvent.create({
-      data: {
-        taskId: continuationTask.id,
-        eventType: "TASK_SPLIT",
-        userId: managerId,
-        data: {
-          originalTaskId: originalTask.id,
-          originalTaskNumber: originalTask.taskNumber,
-          continuationTaskId: continuationTask.id,
-          continuationTaskNumber: continuationTask.taskNumber,
-          fromUserId: originalTask.assignedTo,
-          fromUserName: originalTask.assignedUser?.name,
-          toUserId: newStaffId,
-          toUserName: newUser.name,
-          reason,
-          reassignedBy: managerId,
-          reassignedByName: managerName,
-          inProgressItemsSplit: inProgressItems.length,
-          pendingItemsMoved: pendingItems.length,
-        },
-        notes:
-          notes ||
-          `Task split - ${inProgressItems.length} in-progress items, ${pendingItems.length} pending items`,
-      },
-    });
-
-    // Notify new user
-    await notifyUser(newStaffId, {
-      type: "TASK_ASSIGNED",
-      title: "Continuation Packing Task Assigned",
-      message: `You've been assigned a continuation packing task ${continuationTask.taskNumber} (from ${originalTask.taskNumber}) by ${managerName}.`,
-      link: `/dashboard/packing/pack/${continuationTask.id}`,
-      metadata: {
-        continuationOf: originalTask.taskNumber,
-        reassignedBy: managerName,
-        reason,
-      },
-    });
-
-    // Create task event for assignment
-    await tx.taskEvent.create({
-      data: {
-        taskId: continuationTask.id,
-        eventType: "TASK_ASSIGNED",
-        userId: newStaffId,
-        data: {
-          taskId: continuationTask.id,
-          taskNumber: continuationTask.taskNumber,
-          originalTaskId: originalTask.id,
-          originalTaskNumber: originalTask.taskNumber,
-          reason,
-          assignedBy: managerId,
-          assignedByName: managerName,
-        },
-        notes: `Assigned continuation from ${originalTask.taskNumber}`,
-      },
-    });
-
-    return {
-      success: true,
-      original: {
-        id: originalTask.id,
-        taskNumber: originalTask.taskNumber,
-        status: "PARTIALLY_COMPLETED",
-      },
-      continuation: {
-        id: continuationTask.id,
-        taskNumber: continuationTask.taskNumber,
-        assignedTo: newStaffId,
-        assignedToUser: continuationTask.assignedUser,
-      },
-      summary: {
-        inProgressItemsSplit: inProgressItems.length,
-        pendingItemsMoved: pendingItems.length,
-        totalItemsInContinuation: remainingWork.length,
-      },
-    };
-  });
 }
 
 async function simpleReassignment(
@@ -419,7 +206,7 @@ async function simpleReassignment(
         },
         notes:
           notes ||
-          `Reassigned from ${originalTask.assignedUser?.name} to ${newUser.name}`,
+          `Reassigned from ${originalTask.assignedUser?.name || "Unassigned"} to ${newUser.name}`,
       },
     });
 
@@ -428,7 +215,7 @@ async function simpleReassignment(
       type: "TASK_ASSIGNED",
       title: "New Packing Task Assigned",
       message: `You've been assigned packing task ${originalTask.taskNumber} by ${managerName}.`,
-      link: `/tasks/packing/${originalTask.id}`,
+      link: `/dashboard/packing/progress/${originalTask.id}`,
       metadata: {
         reassignedBy: managerName,
         reason,

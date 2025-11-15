@@ -1,4 +1,3 @@
-// components/ReassignPickListModal.tsx
 "use client";
 
 import { useState } from "react";
@@ -11,57 +10,66 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, Package } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 
-interface ReassignModalProps {
-  open: boolean;
-  onClose: () => void;
-  selectedPickLists: Array<{
+interface PackingTask {
+  id: string;
+  taskNumber: string;
+  status: string;
+  totalOrders: number;
+  completedOrders: number;
+  assignedUser?: {
     id: string;
-    batchNumber: string;
-    status: string;
-    assignedUser?: { name: string | null; email: string } | null;
-  }>;
-  staff: Array<{
-    id: string;
-    name: string | null;
+    name: string;
     email: string;
-    workload?: {
-      activePickLists: number;
-      remainingItems: number;
-      status: string;
-    };
-  }>;
+  };
 }
 
-export function ReassignPickListModal({
+interface Staff {
+  id: string;
+  name: string | null;
+  email: string;
+  workload?: {
+    activePackingTasks: number;
+    remainingOrders: number;
+    status: string;
+  };
+}
+
+interface ReassignPackingTaskModalProps {
+  open: boolean;
+  onClose: () => void;
+  selectedTasks: PackingTask[];
+  staff: Staff[];
+}
+
+export function ReassignPackingTaskModal({
   open,
   onClose,
-  selectedPickLists,
+  selectedTasks,
   staff,
-}: ReassignModalProps) {
+}: ReassignPackingTaskModalProps) {
   const [selectedStaff, setSelectedStaff] = useState("");
   const [reason, setReason] = useState<string>("WORKLOAD_BALANCING");
   const [notes, setNotes] = useState("");
-  const [strategy, setStrategy] = useState<"simple" | "split">("split");
   const queryClient = useQueryClient();
 
-  // Check if any selected pick lists can't be reassigned
-  const invalidPickLists = selectedPickLists.filter(
-    (pl) => pl.status === "COMPLETED" || pl.status === "CANCELLED"
+  // Check if any selected tasks can't be reassigned
+  const invalidTasks = selectedTasks.filter(
+    (task) => task.status === "COMPLETED" || task.status === "CANCELLED"
   );
 
   const reassignMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch("/api/pick-lists/reassign", {
+      const response = await fetch("/api/packing-tasks/reassign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          pickListIds: selectedPickLists.map((pl) => pl.id),
+          taskIds: selectedTasks.map((task) => task.id),
           toUserId: selectedStaff,
-          strategy: "simple",
           reason,
           notes,
         }),
@@ -75,13 +83,13 @@ export function ReassignPickListModal({
       return response.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["pickLists"] });
+      queryClient.invalidateQueries({ queryKey: ["packingTasks"] });
       queryClient.invalidateQueries({ queryKey: ["my-work"] });
       onClose();
       alert(
         `Successfully reassigned ${
-          data.results?.length || selectedPickLists.length
-        } pick list(s)`
+          data.results?.length || selectedTasks.length
+        } packing task(s)`
       );
     },
     onError: (error: Error) => {
@@ -95,9 +103,9 @@ export function ReassignPickListModal({
       return;
     }
 
-    if (invalidPickLists.length > 0) {
+    if (invalidTasks.length > 0) {
       alert(
-        `Cannot reassign ${invalidPickLists.length} pick list(s) - they are completed or cancelled`
+        `Cannot reassign ${invalidTasks.length} task(s) - they are completed or cancelled`
       );
       return;
     }
@@ -111,23 +119,23 @@ export function ReassignPickListModal({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl w-[calc(100%-2rem)] sm:w-full left-[50%] translate-x-[-50%] top-[50%] translate-y-[-50%] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Reassign Pick Lists</DialogTitle>
+          <DialogTitle>Reassign Packing Tasks</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Warning for invalid pick lists */}
-          {invalidPickLists.length > 0 && (
+          {/* Warning for invalid tasks */}
+          {invalidTasks.length > 0 && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-red-800 dark:text-red-200">
                   <p className="font-semibold mb-1">
-                    {invalidPickLists.length} pick list(s) cannot be reassigned
+                    {invalidTasks.length} task(s) cannot be reassigned
                   </p>
                   <ul className="list-disc list-inside space-y-1">
-                    {invalidPickLists.map((pl) => (
-                      <li key={pl.id}>
-                        {pl.batchNumber} - {pl.status}
+                    {invalidTasks.map((task) => (
+                      <li key={task.id}>
+                        {task.taskNumber} - {task.status}
                       </li>
                     ))}
                   </ul>
@@ -136,20 +144,26 @@ export function ReassignPickListModal({
             </div>
           )}
 
-          {/* Selected Pick Lists Summary */}
+          {/* Selected Tasks Summary */}
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
             <h4 className="font-semibold text-blue-900 dark:text-blue-200 mb-2">
-              Selected Pick Lists ({selectedPickLists.length})
+              Selected Packing Tasks ({selectedTasks.length})
             </h4>
             <div className="space-y-1 max-h-32 overflow-y-auto">
-              {selectedPickLists.map((pl) => (
+              {selectedTasks.map((task) => (
                 <div
-                  key={pl.id}
+                  key={task.id}
                   className="text-sm text-blue-800 dark:text-blue-300 flex items-center justify-between"
                 >
-                  <span className="font-medium">{pl.batchNumber}</span>
+                  <div className="flex items-center gap-2">
+                    <Package className="w-3 h-3" />
+                    <span className="font-medium">{task.taskNumber}</span>
+                    <span className="text-xs">
+                      ({task.completedOrders}/{task.totalOrders} orders)
+                    </span>
+                  </div>
                   <span className="text-xs">
-                    Currently: {pl.assignedUser?.name || "Unassigned"}
+                    Currently: {task.assignedUser?.name || "Unassigned"}
                   </span>
                 </div>
               ))}
@@ -169,13 +183,13 @@ export function ReassignPickListModal({
               {staff
                 .sort(
                   (a, b) =>
-                    (a.workload?.remainingItems || 0) -
-                    (b.workload?.remainingItems || 0)
+                    (a.workload?.remainingOrders || 0) -
+                    (b.workload?.remainingOrders || 0)
                 )
                 .map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.name || s.email} ({s.workload?.remainingItems || 0}{" "}
-                    items)
+                    {s.name || s.email} ({s.workload?.remainingOrders || 0}{" "}
+                    orders)
                   </option>
                 ))}
             </select>
@@ -190,18 +204,18 @@ export function ReassignPickListModal({
               <div className="grid grid-cols-3 gap-3 text-sm">
                 <div>
                   <div className="text-gray-600 dark:text-gray-400">
-                    Active Lists
+                    Active Tasks
                   </div>
                   <div className="font-semibold text-gray-900 dark:text-gray-100">
-                    {selectedStaffMember.workload.activePickLists}
+                    {selectedStaffMember.workload.activePackingTasks}
                   </div>
                 </div>
                 <div>
                   <div className="text-gray-600 dark:text-gray-400">
-                    Items Remaining
+                    Orders Remaining
                   </div>
                   <div className="font-semibold text-gray-900 dark:text-gray-100">
-                    {selectedStaffMember.workload.remainingItems}
+                    {selectedStaffMember.workload.remainingOrders}
                   </div>
                 </div>
                 <div>
@@ -223,29 +237,6 @@ export function ReassignPickListModal({
               </div>
             </div>
           )}
-
-          {/* Strategy Selection */}
-          {/* <div>
-            <Label htmlFor="strategy">Reassignment Strategy</Label>
-            <select
-              id="strategy"
-              value={strategy}
-              onChange={(e) =>
-                setStrategy(e.target.value as "simple" | "split")
-              }
-              className="w-full mt-1 px-4 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 dark:bg-zinc-700 dark:text-gray-100"
-            >
-              <option value="split">
-                Split (Create continuation for partial work)
-              </option>
-              <option value="simple">Simple (Transfer entire list)</option>
-            </select>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {strategy === "split"
-                ? "Recommended: Handles partial progress automatically"
-                : "Only use for lists that haven't been started"}
-            </p>
-          </div> */}
 
           {/* Reason */}
           <div>
@@ -294,7 +285,7 @@ export function ReassignPickListModal({
             disabled={
               !selectedStaff ||
               reassignMutation.isPending ||
-              invalidPickLists.length === selectedPickLists.length
+              invalidTasks.length === selectedTasks.length
             }
           >
             {reassignMutation.isPending ? (
@@ -302,7 +293,7 @@ export function ReassignPickListModal({
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               </>
             ) : (
-              <>Reassign {selectedPickLists.length} Pick List(s)</>
+              <>Reassign {selectedTasks.length} Task(s)</>
             )}
           </Button>
         </DialogFooter>
